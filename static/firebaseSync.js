@@ -434,8 +434,10 @@ const firebaseManager = {
       const isOwner = role === 'Owner';
       const manageMenuBtn = document.getElementById('btn-manage-access-menu');
       const moreManageBtn = document.getElementById('btn-more-manage-access');
+      const mobileMoreAccessBtn = document.getElementById('btn-mobile-more-access');
       if (manageMenuBtn) manageMenuBtn.style.display = isOwner ? 'flex' : 'none';
       if (moreManageBtn) moreManageBtn.style.display = isOwner ? 'flex' : 'none';
+      if (mobileMoreAccessBtn) mobileMoreAccessBtn.style.display = isOwner ? 'flex' : 'none';
     } else {
       if (btnLogin) btnLogin.classList.remove('hidden');
       if (badge) badge.classList.add('hidden');

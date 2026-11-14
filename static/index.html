@@ -90,17 +90,31 @@
             </div>
             <i class="fa-solid fa-chevron-down text-[10px] text-white/70 ml-0.5"></i>
           </button>
-          <div id="userDropdownMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl py-2 z-50 text-slate-700 border border-slate-100 text-xs">
-            <div class="px-4 py-2 border-b border-slate-100">
-              <p id="userDropdownEmail" class="font-bold text-slate-800 truncate">user@gmail.com</p>
-              <span id="userDropdownRole" class="inline-block mt-0.5 px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px]">👑 Farm Owner</span>
+
+          <!-- Dropdown perfectly fitted for both mobile and desktop -->
+          <div id="userDropdownMenu" class="hidden fixed sm:absolute inset-x-3 sm:inset-auto sm:right-0 top-16 sm:top-full mt-1 sm:mt-2 w-auto sm:w-64 max-w-sm mx-auto sm:mx-0 bg-white rounded-2xl shadow-2xl py-2.5 z-50 text-slate-700 border border-slate-200 text-xs animate-in fade-in slide-in-from-top-2">
+            <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+              <div class="min-w-0 pr-2">
+                <p id="userDropdownEmail" class="font-bold text-slate-800 truncate text-xs">user@gmail.com</p>
+                <span id="userDropdownRole" class="inline-block mt-0.5 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-extrabold text-[10px]">👑 Farm Owner</span>
+              </div>
+              <button type="button" onclick="toggleUserDropdown()" class="sm:hidden text-slate-400 hover:text-slate-700 p-1 text-base">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
             </div>
-            <button id="btn-manage-access-menu" onclick="openAccessModal()" class="w-full text-left px-4 py-2 hover:bg-indigo-50 flex items-center gap-2 text-indigo-700 font-semibold">
-              <i class="fa-solid fa-user-shield text-indigo-600"></i> Manage Staff & Access
-            </button>
-            <button onclick="handleGoogleSignOut()" class="w-full text-left px-4 py-2 hover:bg-rose-50 flex items-center gap-2 text-rose-600 font-semibold">
-              <i class="fa-solid fa-arrow-right-from-bracket text-rose-500"></i> Sign Out
-            </button>
+            <div class="p-2 space-y-1.5">
+              <button id="btn-manage-access-menu" onclick="openAccessModal()" class="w-full text-left px-3.5 py-2.5 hover:bg-indigo-50 active:bg-indigo-100 flex items-center justify-between text-indigo-900 font-bold rounded-xl border border-indigo-200 bg-indigo-50/70 transition-all shadow-sm">
+                <span class="flex items-center gap-2.5">
+                  <i class="fa-solid fa-user-shield text-base text-indigo-600"></i>
+                  <span>Manage Staff & Access</span>
+                </span>
+                <i class="fa-solid fa-chevron-right text-[11px] text-indigo-400"></i>
+              </button>
+              <button onclick="handleGoogleSignOut()" class="w-full text-left px-3.5 py-2 hover:bg-rose-50 flex items-center gap-2.5 text-rose-600 font-semibold rounded-xl transition-all">
+                <i class="fa-solid fa-arrow-right-from-bracket text-rose-500"></i>
+                <span>Sign Out</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -904,8 +918,8 @@
   </div>
 
   <!-- 6. MANAGE STAFF & ACCESS CONTROL MODAL -->
-  <div id="accessModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
-    <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-xl w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all modal-sheet-enter max-h-[94vh] sm:max-h-[92vh] flex flex-col">
+  <div id="accessModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-xl w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all modal-sheet-enter max-h-[88vh] sm:max-h-[90vh] flex flex-col pb-safe">
       <!-- Modal Header -->
       <div class="bg-gradient-to-r from-indigo-700 via-indigo-800 to-purple-800 px-5 sm:px-6 py-3.5 text-white flex flex-col flex-shrink-0">
         <div class="w-10 h-1 bg-white/40 rounded-full mx-auto mb-2 sm:hidden"></div>
@@ -916,7 +930,7 @@
             </div>
             <div>
               <h3 class="font-bold text-base sm:text-lg leading-tight">Manage Staff & Access</h3>
-              <p class="text-[11px] text-indigo-200">Control who can log in with Google to record or view data</p>
+              <p class="text-[11px] text-indigo-200">Only the Primary Owner can add or revoke staff</p>
             </div>
           </div>
           <button onclick="closeAccessModal()" class="text-white/80 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
@@ -932,22 +946,22 @@
           <form id="form-add-access-user" onsubmit="submitAddAuthorizedUser(event)" class="space-y-3">
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Google Email Address *</label>
-              <input type="email" id="access-user-email" required placeholder="e.g. staff.member@gmail.com" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+              <input type="email" id="access-user-email" required placeholder="e.g. staff.member@gmail.com" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Staff Member Name</label>
-                <input type="text" id="access-user-name" placeholder="e.g. Suresh Patel" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                <input type="text" id="access-user-name" placeholder="e.g. Suresh Patel" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Role / Permissions *</label>
-                <select id="access-user-role" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                <select id="access-user-role" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                   <option value="Staff">👤 Staff (Record Milk & Feed only)</option>
                   <option value="Admin">🛡️ Admin (Full Financial & Delete Access)</option>
                 </select>
               </div>
             </div>
-            <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-900/20 flex items-center justify-center gap-2 transition-all active:scale-95">
+            <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-900/20 flex items-center justify-center gap-2 transition-all active:scale-95">
               <i class="fa-solid fa-check"></i> Authorize Google Account
             </button>
           </form>
@@ -968,7 +982,12 @@
         </div>
       </div>
 
-      <div class="sticky bottom-0 bg-white pt-3 pb-3 px-5 border-t border-slate-100 flex justify-end">
+      <div class="sticky bottom-0 bg-white pt-2.5 pb-4 px-5 border-t border-slate-100 flex items-center justify-between">
+        <span class="text-[11px] text-slate-400 font-medium">Auto-saved in Cloud</span>
+        <button type="button" onclick="closeAccessModal()" class="w-full sm:w-auto px-6 py-2.5 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-sm">
+          Done
+        </button>
+      </div>
         <button type="button" onclick="closeAccessModal()" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Close</button>
       </div>
     </div>
@@ -1136,6 +1155,83 @@
     <span id="toast-message" class="text-sm font-medium">Operation completed</span>
   </div>
 
+  <!-- MOBILE BOTTOM MORE ACTIONS SHEET (Dedicated Thumb-Friendly Menu) -->
+  <div id="mobileMoreSheet" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end justify-center p-0 hidden">
+    <div class="bg-white rounded-t-3xl w-full max-h-[85vh] shadow-2xl border border-slate-100 overflow-hidden flex flex-col modal-sheet-enter pb-safe">
+      <div class="pt-3 pb-2.5 px-5 border-b border-slate-100 flex items-center justify-between relative">
+        <div class="w-10 h-1 bg-slate-300 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2"></div>
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 pt-1">Dairy Menu & Tools</span>
+        <button type="button" onclick="closeMobileMoreSheet()" class="text-slate-400 hover:text-slate-700 p-1 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-4 space-y-2 overflow-y-auto text-sm">
+        <!-- 1. Manage Staff (Exclusive for Farm Owner) -->
+        <button id="btn-mobile-more-access" onclick="openAccessModal(); closeMobileMoreSheet();" class="w-full p-3.5 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-2xl flex items-center justify-between font-bold text-xs active:scale-98 transition-all shadow-sm">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm shadow-md shadow-indigo-900/20">
+              <i class="fa-solid fa-user-shield"></i>
+            </div>
+            <div class="text-left">
+              <span class="block text-xs font-black">Manage Staff & Access</span>
+              <span class="block text-[10px] text-indigo-600 font-normal">Add staff & restrict view/entry</span>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-indigo-400 text-xs"></i>
+        </button>
+
+        <!-- 2. Firebase Cloud Sync -->
+        <button onclick="openFirebaseModal(); closeMobileMoreSheet();" class="w-full p-3 bg-slate-50 border border-slate-200 text-slate-800 rounded-2xl flex items-center justify-between font-bold text-xs active:scale-98 transition-all">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center text-sm shadow-md shadow-amber-900/20">
+              <i class="fa-solid fa-cloud"></i>
+            </div>
+            <div class="text-left">
+              <span class="block text-xs font-bold">Firebase Cloud Settings</span>
+              <span class="block text-[10px] text-slate-500 font-normal">Auto-sync with Google Cloud</span>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-slate-400 text-xs"></i>
+        </button>
+
+        <!-- 3. Cattle Manager -->
+        <button onclick="openCattleModal(); closeMobileMoreSheet();" class="w-full p-3 bg-slate-50 border border-slate-200 text-slate-800 rounded-2xl flex items-center justify-between font-bold text-xs active:scale-98 transition-all">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm shadow-md shadow-emerald-900/20">
+              <i class="fa-solid fa-cow"></i>
+            </div>
+            <div class="text-left">
+              <span class="block text-xs font-bold">Cattle Manager</span>
+              <span class="block text-[10px] text-slate-500 font-normal">Tag numbers, breeds & lactation</span>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-slate-400 text-xs"></i>
+        </button>
+
+        <!-- 4. Export CSV -->
+        <div class="pt-2">
+          <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1 mb-1.5">Export Reports</span>
+          <div class="grid grid-cols-2 gap-2">
+            <a href="/api/export/csv?type=milk" class="p-2.5 bg-white border border-slate-200 rounded-xl text-center text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5 active:bg-slate-50">
+              <i class="fa-solid fa-file-csv text-emerald-600"></i> Milk CSV
+            </a>
+            <a href="/api/export/csv?type=feed" class="p-2.5 bg-white border border-slate-200 rounded-xl text-center text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5 active:bg-slate-50">
+              <i class="fa-solid fa-file-csv text-amber-600"></i> Feed CSV
+            </a>
+          </div>
+        </div>
+
+        <!-- 5. Sign Out -->
+        <div class="pt-2">
+          <button onclick="handleGoogleSignOut(); closeMobileMoreSheet();" class="w-full py-2.5 text-center text-rose-600 font-bold text-xs hover:bg-rose-50 rounded-xl transition-all">
+            <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MOBILE BOTTOM THUMB NAVIGATION DOCK (Easy 1-Hand Handling) -->
   <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 py-1.5 px-3 flex items-center justify-around md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.08)] pb-safe">
     <button type="button" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center justify-center text-slate-600 hover:text-emerald-700 text-xs font-semibold py-1 active:scale-95 transition-all">
@@ -1156,14 +1252,14 @@
       <i class="fa-solid fa-receipt text-base text-rose-600"></i>
       <span class="text-[10px] mt-0.5">+ Expense</span>
     </button>
-    <button type="button" onclick="toggleMoreMenu()" class="flex flex-col items-center justify-center text-slate-600 hover:text-slate-900 text-xs font-semibold py-1 active:scale-95 transition-all">
+    <button type="button" onclick="openMobileMoreSheet()" class="flex flex-col items-center justify-center text-slate-600 hover:text-slate-900 text-xs font-semibold py-1 active:scale-95 transition-all">
       <i class="fa-solid fa-bars text-base text-slate-500"></i>
       <span class="text-[10px] mt-0.5">More</span>
     </button>
   </nav>
 
   <!-- Scripts -->
-  <script src="firebaseSync.js?v=11"></script>
-  <script src="app.js?v=11"></script>
+  <script src="firebaseSync.js?v=12"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

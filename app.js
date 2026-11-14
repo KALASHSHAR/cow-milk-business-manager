@@ -1653,12 +1653,21 @@ function openAccessModal() {
   }
   document.getElementById('userDropdownMenu')?.classList.add('hidden');
   document.getElementById('moreMenu')?.classList.add('hidden');
+  document.getElementById('mobileMoreSheet')?.classList.add('hidden');
   document.getElementById('accessModal').classList.remove('hidden');
   loadAuthorizedUsersList();
 }
 
 function closeAccessModal() {
   document.getElementById('accessModal').classList.add('hidden');
+}
+
+function openMobileMoreSheet() {
+  document.getElementById('mobileMoreSheet')?.classList.remove('hidden');
+}
+
+function closeMobileMoreSheet() {
+  document.getElementById('mobileMoreSheet')?.classList.add('hidden');
 }
 
 async function loadAuthorizedUsersList() {
@@ -1694,26 +1703,31 @@ async function loadAuthorizedUsersList() {
             : `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">👤 Staff</span>`);
 
       return `
-        <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700 uppercase flex-shrink-0">
-              ${name.charAt(0)}
-            </div>
-            <div class="truncate">
-              <div class="flex items-center gap-1.5">
-                <span class="font-bold text-slate-800 text-xs truncate">${escapeHtml(name)}</span>
-                ${isSelf ? '<span class="text-[9px] bg-emerald-50 text-emerald-700 px-1 rounded font-semibold">You</span>' : ''}
+        <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700 uppercase flex-shrink-0">
+                ${name.charAt(0)}
               </div>
-              <span class="text-[11px] text-slate-500 block truncate">${escapeHtml(email)}</span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="font-bold text-slate-800 text-xs truncate max-w-[140px] sm:max-w-none">${escapeHtml(name)}</span>
+                  ${isSelf ? '<span class="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded font-semibold border border-emerald-200">You</span>' : ''}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              ${roleBadge}
+              ${(!isUserOwner && isOwner && !isSelf) ? `
+                <button onclick="handleDeleteAuthorizedUser('${email}')" class="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 text-xs rounded-lg transition-colors" title="Revoke Access">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+              ` : ''}
             </div>
           </div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            ${roleBadge}
-            ${(!isUserOwner && isOwner && !isSelf) ? `
-              <button onclick="handleDeleteAuthorizedUser('${email}')" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs transition-colors" title="Revoke Access">
-                <i class="fa-regular fa-trash-can"></i>
-              </button>
-            ` : ''}
+          <div class="text-[11px] text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100 flex items-center gap-1.5 break-all">
+            <i class="fa-regular fa-envelope text-slate-400 text-[10px] flex-shrink-0"></i>
+            <span>${escapeHtml(email)}</span>
           </div>
         </div>
       `;
