@@ -822,6 +822,59 @@ const firebaseManager = {
     if (viewLevel === 'yearly') periodLabel = `Year: ${targetDate.substring(0, 4)}`;
     if (viewLevel === 'custom') periodLabel = `Range: ${startDate} to ${endDate}`;
 
+    // Partner Profit Division Calculation
+    // Ratios: Kalash: 30% (0.30), Sandesh: 35% (0.35), Yash: 35% (0.35)
+    const calcNetProfitForDate = (filterFn) => {
+      const mSub = allMilk.filter(m => m.date && filterFn(m.date));
+      const eSub = allExpenses.filter(e => e.date && filterFn(e.date));
+      const r = mSub.reduce((s, m) => s + (Number(m.total_amount) || 0), 0);
+      const o = eSub.filter(e => e.type === 'Operational').reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      return Math.round((r - o) * 100) / 100;
+    };
+
+    const nowObj = new Date();
+    const curYear = nowObj.getFullYear();
+    const curMonth = String(nowObj.getMonth() + 1).padStart(2, '0');
+    const curDay = String(nowObj.getDate()).padStart(2, '0');
+    const todayStr = `${curYear}-${curMonth}-${curDay}`;
+    const thisMonthStr = `${curYear}-${curMonth}`;
+    const thisYearStr = `${curYear}`;
+
+    const dailyProfit = calcNetProfitForDate(d => d === todayStr);
+    const monthlyProfit = calcNetProfitForDate(d => d.startsWith(thisMonthStr));
+    const yearlyProfit = calcNetProfitForDate(d => d.startsWith(thisYearStr));
+
+    const partnerShares = {
+      daily: {
+        period: `Today (${todayStr})`,
+        total_profit: dailyProfit,
+        kalash: Math.round(dailyProfit * 0.30 * 100) / 100,
+        sandesh: Math.round(dailyProfit * 0.35 * 100) / 100,
+        yash: Math.round(dailyProfit * 0.35 * 100) / 100
+      },
+      monthly: {
+        period: `This Month (${thisMonthStr})`,
+        total_profit: monthlyProfit,
+        kalash: Math.round(monthlyProfit * 0.30 * 100) / 100,
+        sandesh: Math.round(monthlyProfit * 0.35 * 100) / 100,
+        yash: Math.round(monthlyProfit * 0.35 * 100) / 100
+      },
+      yearly: {
+        period: `This Year (${thisYearStr})`,
+        total_profit: yearlyProfit,
+        kalash: Math.round(yearlyProfit * 0.30 * 100) / 100,
+        sandesh: Math.round(yearlyProfit * 0.35 * 100) / 100,
+        yash: Math.round(yearlyProfit * 0.35 * 100) / 100
+      },
+      current: {
+        period: periodLabel,
+        total_profit: netProfit,
+        kalash: Math.round(netProfit * 0.30 * 100) / 100,
+        sandesh: Math.round(netProfit * 0.35 * 100) / 100,
+        yash: Math.round(netProfit * 0.35 * 100) / 100
+      }
+    };
+
     return {
       period_label: periodLabel,
       view_level: viewLevel,
@@ -839,7 +892,8 @@ const firebaseManager = {
       cost_per_liter: costPerLiter,
       total_entries: filteredMilk.length,
       category_breakdown: categoryBreakdown,
-      chart_data: chartData
+      chart_data: chartData,
+      partner_shares: partnerShares
     };
   },
 

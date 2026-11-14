@@ -155,6 +155,7 @@ async function loadDashboard() {
     }
 
     renderMetrics(d);
+    renderPartnerProfitSection(d);
     renderFinancialChart(d.chart_data);
     renderDonutChart(d.category_breakdown);
     document.getElementById('period-badge').innerText = d.period_label;
@@ -193,6 +194,176 @@ function renderMetrics(d) {
 
   document.getElementById('card-profit-margin').innerText = `${d.profit_margin_pct}%`;
   document.getElementById('card-avg-fat').innerText = d.avg_fat !== null ? `${d.avg_fat}%` : 'N/A';
+}
+
+// ==========================================
+// PARTNER PROFIT DIVISION STATE & LOGIC
+// Partners: Kalash (30%), Sandesh (35%), Yash (35%)
+// ==========================================
+let currentPartnerPeriod = 'monthly';
+let latestPartnerShares = null;
+
+function setPartnerProfitPeriod(period) {
+  currentPartnerPeriod = period;
+
+  // Update button active styling
+  const periods = ['daily', 'monthly', 'yearly', 'current'];
+  periods.forEach(p => {
+    const btn = document.getElementById(`btn-partner-${p}`);
+    if (btn) {
+      if (p === period) {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-white text-emerald-700 shadow-sm';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-900';
+      }
+    }
+  });
+
+  if (latestPartnerShares && latestPartnerShares[period]) {
+    updatePartnerCardValues(latestPartnerShares[period]);
+  }
+}
+
+function updatePartnerCardValues(periodData) {
+  if (!periodData) return;
+
+  const total = periodData.total_profit || 0;
+  const kShare = periodData.kalash || 0;
+  const sShare = periodData.sandesh || 0;
+  const yShare = periodData.yash || 0;
+
+  // Banner title & total
+  const titleEl = document.getElementById('partner-period-active-title');
+  const totalEl = document.getElementById('partner-period-total-profit');
+  if (titleEl) {
+    let timeframeName = 'Monthly Net Profit (This Month)';
+    if (currentPartnerPeriod === 'daily') timeframeName = 'Daily Net Profit (Today)';
+    else if (currentPartnerPeriod === 'yearly') timeframeName = 'Yearly Net Profit (This Year)';
+    else if (currentPartnerPeriod === 'current') timeframeName = `Current View Net Profit (${periodData.period || 'Active View'})`;
+    titleEl.innerText = timeframeName;
+  }
+
+  if (totalEl) {
+    if (total >= 0) {
+      totalEl.innerText = `+₹${formatNumber(total)}`;
+      totalEl.className = 'text-base sm:text-xl font-black text-emerald-700';
+    } else {
+      totalEl.innerText = `-₹${formatNumber(Math.abs(total))}`;
+      totalEl.className = 'text-base sm:text-xl font-black text-rose-600';
+    }
+  }
+
+  // Kalash Share Card (30%)
+  const kEl = document.getElementById('partner-kalash-share');
+  const kFormula = document.getElementById('partner-kalash-formula');
+  if (kEl) {
+    if (kShare >= 0) {
+      kEl.innerText = `+₹${formatNumber(kShare)}`;
+      kEl.className = 'text-xl sm:text-2xl font-black text-emerald-700 mt-0.5';
+    } else {
+      kEl.innerText = `-₹${formatNumber(Math.abs(kShare))}`;
+      kEl.className = 'text-xl sm:text-2xl font-black text-rose-600 mt-0.5';
+    }
+  }
+  if (kFormula) {
+    kFormula.innerText = `30% of ₹${formatNumber(Math.abs(total))}`;
+  }
+
+  // Sandesh Share Card (35%)
+  const sEl = document.getElementById('partner-sandesh-share');
+  const sFormula = document.getElementById('partner-sandesh-formula');
+  if (sEl) {
+    if (sShare >= 0) {
+      sEl.innerText = `+₹${formatNumber(sShare)}`;
+      sEl.className = 'text-xl sm:text-2xl font-black text-teal-700 mt-0.5';
+    } else {
+      sEl.innerText = `-₹${formatNumber(Math.abs(sShare))}`;
+      sEl.className = 'text-xl sm:text-2xl font-black text-rose-600 mt-0.5';
+    }
+  }
+  if (sFormula) {
+    sFormula.innerText = `35% of ₹${formatNumber(Math.abs(total))}`;
+  }
+
+  // Yash Share Card (35%)
+  const yEl = document.getElementById('partner-yash-share');
+  const yFormula = document.getElementById('partner-yash-formula');
+  if (yEl) {
+    if (yShare >= 0) {
+      yEl.innerText = `+₹${formatNumber(yShare)}`;
+      yEl.className = 'text-xl sm:text-2xl font-black text-blue-700 mt-0.5';
+    } else {
+      yEl.innerText = `-₹${formatNumber(Math.abs(yShare))}`;
+      yEl.className = 'text-xl sm:text-2xl font-black text-rose-600 mt-0.5';
+    }
+  }
+  if (yFormula) {
+    yFormula.innerText = `35% of ₹${formatNumber(Math.abs(total))}`;
+  }
+}
+
+function renderPartnerProfitSection(d) {
+  // Build fallback partner shares if not provided by backend
+  if (!d.partner_shares) {
+    const p = d.net_profit || 0;
+    d.partner_shares = {
+      daily: { period: 'Today', total_profit: p, kalash: Math.round(p * 0.30 * 100) / 100, sandesh: Math.round(p * 0.35 * 100) / 100, yash: Math.round(p * 0.35 * 100) / 100 },
+      monthly: { period: 'This Month', total_profit: p, kalash: Math.round(p * 0.30 * 100) / 100, sandesh: Math.round(p * 0.35 * 100) / 100, yash: Math.round(p * 0.35 * 100) / 100 },
+      yearly: { period: 'This Year', total_profit: p, kalash: Math.round(p * 0.30 * 100) / 100, sandesh: Math.round(p * 0.35 * 100) / 100, yash: Math.round(p * 0.35 * 100) / 100 },
+      current: { period: d.period_label || 'Current', total_profit: p, kalash: Math.round(p * 0.30 * 100) / 100, sandesh: Math.round(p * 0.35 * 100) / 100, yash: Math.round(p * 0.35 * 100) / 100 }
+    };
+  }
+
+  latestPartnerShares = d.partner_shares;
+
+  // Format Helper for Table
+  const fmt = (val) => {
+    if (val === undefined || val === null) return '₹0.00';
+    return (val >= 0 ? '+₹' : '-₹') + formatNumber(Math.abs(val));
+  };
+
+  // Populate Daily Row in Table
+  if (latestPartnerShares.daily) {
+    const row = latestPartnerShares.daily;
+    const pEl = document.getElementById('tbl-profit-daily');
+    const kEl = document.getElementById('tbl-kalash-daily');
+    const sEl = document.getElementById('tbl-sandesh-daily');
+    const yEl = document.getElementById('tbl-yash-daily');
+    if (pEl) { pEl.innerText = fmt(row.total_profit); pEl.className = row.total_profit >= 0 ? 'px-3 sm:px-4 py-2.5 font-bold text-emerald-700' : 'px-3 sm:px-4 py-2.5 font-bold text-rose-600'; }
+    if (kEl) kEl.innerText = fmt(row.kalash);
+    if (sEl) sEl.innerText = fmt(row.sandesh);
+    if (yEl) yEl.innerText = fmt(row.yash);
+  }
+
+  // Populate Monthly Row in Table
+  if (latestPartnerShares.monthly) {
+    const row = latestPartnerShares.monthly;
+    const pEl = document.getElementById('tbl-profit-monthly');
+    const kEl = document.getElementById('tbl-kalash-monthly');
+    const sEl = document.getElementById('tbl-sandesh-monthly');
+    const yEl = document.getElementById('tbl-yash-monthly');
+    if (pEl) { pEl.innerText = fmt(row.total_profit); pEl.className = row.total_profit >= 0 ? 'px-3 sm:px-4 py-2.5 font-bold text-emerald-700' : 'px-3 sm:px-4 py-2.5 font-bold text-rose-600'; }
+    if (kEl) kEl.innerText = fmt(row.kalash);
+    if (sEl) sEl.innerText = fmt(row.sandesh);
+    if (yEl) yEl.innerText = fmt(row.yash);
+  }
+
+  // Populate Yearly Row in Table
+  if (latestPartnerShares.yearly) {
+    const row = latestPartnerShares.yearly;
+    const pEl = document.getElementById('tbl-profit-yearly');
+    const kEl = document.getElementById('tbl-kalash-yearly');
+    const sEl = document.getElementById('tbl-sandesh-yearly');
+    const yEl = document.getElementById('tbl-yash-yearly');
+    if (pEl) { pEl.innerText = fmt(row.total_profit); pEl.className = row.total_profit >= 0 ? 'px-3 sm:px-4 py-2.5 font-bold text-emerald-700' : 'px-3 sm:px-4 py-2.5 font-bold text-rose-600'; }
+    if (kEl) kEl.innerText = fmt(row.kalash);
+    if (sEl) sEl.innerText = fmt(row.sandesh);
+    if (yEl) yEl.innerText = fmt(row.yash);
+  }
+
+  // Update Active Selected Card Values
+  const activeData = latestPartnerShares[currentPartnerPeriod] || latestPartnerShares.monthly || latestPartnerShares.current;
+  updatePartnerCardValues(activeData);
 }
 
 function renderFinancialChart(chartData) {
