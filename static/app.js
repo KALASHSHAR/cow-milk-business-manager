@@ -52,6 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Init category dropdown
   updateCategoryOptions();
 
+  // Initialize Firebase Cloud if configured
+  if (typeof firebaseManager !== 'undefined') {
+    firebaseManager.init();
+  }
+
   // Load Dashboard & Data
   loadDashboard();
   loadRecentTables();
@@ -123,24 +128,32 @@ function changeYear(delta) {
 
 // Fetch and render Dashboard
 async function loadDashboard() {
-  let url = `/api/dashboard?level=${currentViewLevel}`;
-
-  if (currentViewLevel === 'daily') {
-    url += `&target_date=${document.getElementById('input-daily-date').value}`;
-  } else if (currentViewLevel === 'monthly') {
-    url += `&target_date=${document.getElementById('input-monthly-date').value}`;
-  } else if (currentViewLevel === 'yearly') {
-    url += `&target_date=${document.getElementById('select-year').value}`;
-  } else if (currentViewLevel === 'custom') {
-    url += `&start_date=${document.getElementById('input-custom-start').value}&end_date=${document.getElementById('input-custom-end').value}`;
-  }
+  const targetDaily = document.getElementById('input-daily-date').value;
+  const targetMonthly = document.getElementById('input-monthly-date').value;
+  const targetYearly = document.getElementById('select-year').value;
+  const customStart = document.getElementById('input-custom-start').value;
+  const customEnd = document.getElementById('input-custom-end').value;
 
   try {
-    const res = await fetch(url);
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error);
+    let d;
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      let targetDate = targetMonthly;
+      if (currentViewLevel === 'daily') targetDate = targetDaily;
+      if (currentViewLevel === 'yearly') targetDate = targetYearly;
+      d = await firebaseManager.getDashboardSummary(currentViewLevel, targetDate, customStart, customEnd);
+    } else {
+      let url = `/api/dashboard?level=${currentViewLevel}`;
+      if (currentViewLevel === 'daily') url += `&target_date=${targetDaily}`;
+      else if (currentViewLevel === 'monthly') url += `&target_date=${targetMonthly}`;
+      else if (currentViewLevel === 'yearly') url += `&target_date=${targetYearly}`;
+      else if (currentViewLevel === 'custom') url += `&start_date=${customStart}&end_date=${customEnd}`;
 
-    const d = result.data;
+      const res = await fetch(url);
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+      d = result.data;
+    }
+
     renderMetrics(d);
     renderFinancialChart(d.chart_data);
     renderDonutChart(d.category_breakdown);
@@ -411,15 +424,27 @@ async function loadRecentTables() {
 
 async function loadMilkTable() {
   try {
-    const res = await fetch('/api/milk?limit=50');
-    const data = await res.json();
+    let records = [];
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      records = await firebaseManager.getMilk();
+    } else {
+      const res = await fetch('/api/milk?limit=50');
+      const data = await res.json();
+      records = data.records || [];
+    }
+
     const tbody = document.getElementById('milk-table-body');
-    if (!data.records || data.records.length === 0) {
+    if (!records || records.length === 0) {
       tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">No milk sales logged yet. Click "+ Add Daily Milk" to record sales!</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = data.records.map(r => `
+    tbody.innerHTML = records.map(r => {
+      const receiptSrc = r.receipt_image 
+        ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
+        : null;
+
+      return `
       <tr class="hover:bg-slate-50/70 transition-colors">
         <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
         <td class="py-3 px-4">
@@ -433,20 +458,20 @@ async function loadMilkTable() {
         <td class="py-3 px-4 font-black text-emerald-600">₹${formatNumber(r.total_amount)}</td>
         <td class="py-3 px-4 font-medium text-slate-700">${escapeHtml(r.buyer_name || '-')}</td>
         <td class="py-3 px-4">
-          ${r.receipt_image ? `
-            <button onclick="openReceiptModal('/uploads/${r.receipt_image}', 'Milk Slip - ${r.date} (${r.shift})')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold border border-emerald-200 transition-all">
+          ${receiptSrc ? `
+            <button onclick="openReceiptModal('${receiptSrc}', 'Milk Slip - ${r.date} (${r.shift})')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold border border-emerald-200 transition-all">
               <i class="fa-solid fa-receipt text-emerald-600"></i> View Slip
             </button>
           ` : `<span class="text-xs text-slate-300">--</span>`}
         </td>
         <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(r.notes || '')}</td>
         <td class="py-3 px-4 text-right">
-          <button onclick="deleteMilkSale(${r.id})" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
+          <button onclick="deleteMilkSale('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
             <i class="fa-regular fa-trash-can"></i>
           </button>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
   } catch (err) {
     console.error(err);
   }
@@ -454,15 +479,27 @@ async function loadMilkTable() {
 
 async function loadFeedTable() {
   try {
-    const res = await fetch('/api/feed?limit=50');
-    const data = await res.json();
+    let records = [];
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      records = await firebaseManager.getFeed();
+    } else {
+      const res = await fetch('/api/feed?limit=50');
+      const data = await res.json();
+      records = data.records || [];
+    }
+
     const tbody = document.getElementById('feed-table-body');
-    if (!data.records || data.records.length === 0) {
+    if (!records || records.length === 0) {
       tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-slate-400">No feed purchases logged yet. Click "+ Add Cow Feed" to track feed costs!</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = data.records.map(r => `
+    tbody.innerHTML = records.map(r => {
+      const receiptSrc = r.receipt_image 
+        ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
+        : null;
+
+      return `
       <tr class="hover:bg-slate-50/70 transition-colors">
         <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
         <td class="py-3 px-4">
@@ -475,20 +512,20 @@ async function loadFeedTable() {
         <td class="py-3 px-4 font-black text-rose-600">₹${formatNumber(r.cost)}</td>
         <td class="py-3 px-4 text-slate-600">${escapeHtml(r.supplier || '-')}</td>
         <td class="py-3 px-4">
-          ${r.receipt_image ? `
-            <button onclick="openReceiptModal('/uploads/${r.receipt_image}', 'Feed Invoice - ${escapeHtml(r.item_name)}')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-semibold border border-amber-200 transition-all">
+          ${receiptSrc ? `
+            <button onclick="openReceiptModal('${receiptSrc}', 'Feed Invoice - ${escapeHtml(r.item_name)}')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-semibold border border-amber-200 transition-all">
               <i class="fa-solid fa-receipt text-amber-600"></i> View Bill
             </button>
           ` : `<span class="text-xs text-slate-300">--</span>`}
         </td>
         <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(r.notes || '')}</td>
         <td class="py-3 px-4 text-right">
-          <button onclick="deleteFeedPurchase(${r.id})" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
+          <button onclick="deleteFeedPurchase('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
             <i class="fa-regular fa-trash-can"></i>
           </button>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
   } catch (err) {
     console.error(err);
   }
@@ -496,15 +533,27 @@ async function loadFeedTable() {
 
 async function loadExpensesTable() {
   try {
-    const res = await fetch('/api/expenses?limit=50');
-    const data = await res.json();
+    let records = [];
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      records = await firebaseManager.getExpenses();
+    } else {
+      const res = await fetch('/api/expenses?limit=50');
+      const data = await res.json();
+      records = data.records || [];
+    }
+
     const tbody = document.getElementById('expenses-table-body');
-    if (!data.records || data.records.length === 0) {
+    if (!records || records.length === 0) {
       tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">No expenses logged yet. Click "+ Add Expense" to record costs or investments!</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = data.records.map(r => `
+    tbody.innerHTML = records.map(r => {
+      const receiptSrc = r.receipt_image 
+        ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
+        : null;
+
+      return `
       <tr class="hover:bg-slate-50/70 transition-colors">
         <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
         <td class="py-3 px-4">
@@ -517,19 +566,19 @@ async function loadExpensesTable() {
         <td class="py-3 px-4 font-black ${r.type === 'Capital Investment' ? 'text-blue-600' : 'text-rose-600'}">₹${formatNumber(r.amount)}</td>
         <td class="py-3 px-4 text-xs font-medium text-slate-500">${escapeHtml(r.payment_mode || 'Cash')}</td>
         <td class="py-3 px-4">
-          ${r.receipt_image ? `
-            <button onclick="openReceiptModal('/uploads/${r.receipt_image}', 'Receipt - ${escapeHtml(r.description)}')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition-all">
+          ${receiptSrc ? `
+            <button onclick="openReceiptModal('${receiptSrc}', 'Receipt - ${escapeHtml(r.description)}')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition-all">
               <i class="fa-solid fa-receipt text-slate-600"></i> View Slip
             </button>
           ` : `<span class="text-xs text-slate-300">--</span>`}
         </td>
         <td class="py-3 px-4 text-right">
-          <button onclick="deleteExpense(${r.id})" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
+          <button onclick="deleteExpense('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
             <i class="fa-regular fa-trash-can"></i>
           </button>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
   } catch (err) {
     console.error(err);
   }
@@ -663,9 +712,8 @@ function closeReceiptModal() {
 
 async function submitMilkSale(e) {
   e.preventDefault();
-  
-  // Upload receipt image if provided
-  let receiptFilename = await uploadReceiptFile('milk-receipt-file');
+  const fileInput = document.getElementById('milk-receipt-file');
+  const receiptFile = fileInput && fileInput.files ? fileInput.files[0] : null;
 
   const payload = {
     date: document.getElementById('milk-date').value,
@@ -675,20 +723,27 @@ async function submitMilkSale(e) {
     fat_percentage: document.getElementById('milk-fat').value ? parseFloat(document.getElementById('milk-fat').value) : null,
     snf_percentage: document.getElementById('milk-snf').value ? parseFloat(document.getElementById('milk-snf').value) : null,
     buyer_name: document.getElementById('milk-buyer').value || 'Local Dairy',
-    notes: document.getElementById('milk-notes').value,
-    receipt_image: receiptFilename
+    notes: document.getElementById('milk-notes').value
   };
 
   try {
-    const res = await fetch('/api/milk', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error);
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      await firebaseManager.saveMilk(payload, receiptFile);
+      showToast('Milk sale saved to Firebase Cloud!', 'success');
+    } else {
+      let receiptFilename = await uploadReceiptFile('milk-receipt-file');
+      payload.receipt_image = receiptFilename;
 
-    showToast('Milk sale recorded with receipt!', 'success');
+      const res = await fetch('/api/milk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+      showToast('Milk sale recorded with receipt!', 'success');
+    }
+
     closeMilkModal();
     document.getElementById('milk-quantity').value = '';
     clearReceiptInput('milk-receipt-file', 'milk-receipt-preview');
@@ -701,9 +756,8 @@ async function submitMilkSale(e) {
 
 async function submitFeedPurchase(e) {
   e.preventDefault();
-
-  // Upload receipt image if provided
-  let receiptFilename = await uploadReceiptFile('feed-receipt-file');
+  const fileInput = document.getElementById('feed-receipt-file');
+  const receiptFile = fileInput && fileInput.files ? fileInput.files[0] : null;
 
   const payload = {
     date: document.getElementById('feed-date').value,
@@ -713,20 +767,27 @@ async function submitFeedPurchase(e) {
     cost: parseFloat(document.getElementById('feed-cost').value),
     supplier: document.getElementById('feed-supplier').value,
     payment_mode: document.getElementById('feed-payment').value,
-    notes: document.getElementById('feed-notes').value,
-    receipt_image: receiptFilename
+    notes: document.getElementById('feed-notes').value
   };
 
   try {
-    const res = await fetch('/api/feed', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error);
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      await firebaseManager.saveFeed(payload, receiptFile);
+      showToast('Feed purchase saved to Firebase Cloud!', 'success');
+    } else {
+      let receiptFilename = await uploadReceiptFile('feed-receipt-file');
+      payload.receipt_image = receiptFilename;
 
-    showToast('Cow feed purchase & receipt saved!', 'success');
+      const res = await fetch('/api/feed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+      showToast('Cow feed purchase & receipt saved!', 'success');
+    }
+
     closeFeedModal();
     document.getElementById('feed-item').value = '';
     document.getElementById('feed-cost').value = '';
@@ -742,9 +803,8 @@ async function submitFeedPurchase(e) {
 
 async function submitExpense(e) {
   e.preventDefault();
-
-  // Upload receipt image if provided
-  let receiptFilename = await uploadReceiptFile('expense-receipt-file');
+  const fileInput = document.getElementById('expense-receipt-file');
+  const receiptFile = fileInput && fileInput.files ? fileInput.files[0] : null;
 
   const payload = {
     type: document.querySelector('input[name="expense_nature"]:checked').value,
@@ -752,20 +812,27 @@ async function submitExpense(e) {
     date: document.getElementById('expense-date').value,
     description: document.getElementById('expense-description').value,
     amount: parseFloat(document.getElementById('expense-amount').value),
-    payment_mode: document.getElementById('expense-payment').value,
-    receipt_image: receiptFilename
+    payment_mode: document.getElementById('expense-payment').value
   };
 
   try {
-    const res = await fetch('/api/expenses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error);
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      await firebaseManager.saveExpense(payload, receiptFile);
+      showToast('Expense / Investment saved to Firebase Cloud!', 'success');
+    } else {
+      let receiptFilename = await uploadReceiptFile('expense-receipt-file');
+      payload.receipt_image = receiptFilename;
 
-    showToast('Expense / Investment & receipt recorded!', 'success');
+      const res = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+      showToast('Expense / Investment & receipt recorded!', 'success');
+    }
+
     closeExpenseModal();
     document.getElementById('expense-description').value = '';
     document.getElementById('expense-amount').value = '';
@@ -782,7 +849,11 @@ async function submitExpense(e) {
 async function deleteMilkSale(id) {
   if (!confirm('Are you sure you want to delete this milk record?')) return;
   try {
-    await fetch(`/api/milk/${id}`, { method: 'DELETE' });
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      await firebaseManager.deleteMilk(id);
+    } else {
+      await fetch(`/api/milk/${id}`, { method: 'DELETE' });
+    }
     showToast('Milk record removed', 'success');
     loadDashboard();
     loadMilkTable();
@@ -794,7 +865,11 @@ async function deleteMilkSale(id) {
 async function deleteFeedPurchase(id) {
   if (!confirm('Are you sure you want to delete this feed purchase record?')) return;
   try {
-    await fetch(`/api/feed/${id}`, { method: 'DELETE' });
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      await firebaseManager.deleteFeed(id);
+    } else {
+      await fetch(`/api/feed/${id}`, { method: 'DELETE' });
+    }
     showToast('Feed record removed', 'success');
     loadDashboard();
     loadFeedTable();
@@ -807,8 +882,142 @@ async function deleteFeedPurchase(id) {
 async function deleteExpense(id) {
   if (!confirm('Are you sure you want to delete this expense record?')) return;
   try {
-    await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      await firebaseManager.deleteExpense(id);
+    } else {
+      await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+    }
     showToast('Expense removed', 'success');
+    loadDashboard();
+    loadExpensesTable();
+  } catch (err) {
+    showToast('Failed to delete', 'error');
+  }
+}
+
+// ----------------- FIREBASE CONFIG MODAL & SYNC ----------------- //
+
+function openFirebaseModal() {
+  const modal = document.getElementById('firebaseModal');
+  const input = document.getElementById('firebaseConfigInput');
+  const saved = localStorage.getItem('gaudhan_firebase_config');
+  if (saved && !input.value) {
+    try {
+      input.value = JSON.stringify(JSON.parse(saved), null, 2);
+    } catch (e) {
+      input.value = saved;
+    }
+  }
+  if (typeof firebaseManager !== 'undefined') {
+    firebaseManager.updateUI();
+  }
+  modal.classList.remove('hidden');
+}
+
+function closeFirebaseModal() {
+  document.getElementById('firebaseModal').classList.add('hidden');
+}
+
+function saveFirebaseConfig() {
+  const raw = document.getElementById('firebaseConfigInput').value.trim();
+  if (!raw) {
+    showToast('Please paste your Firebase configuration first', 'error');
+    return;
+  }
+
+  let configObj = null;
+  // Try direct JSON parse
+  try {
+    configObj = JSON.parse(raw);
+  } catch (e) {
+    // If user pasted JS code like `const firebaseConfig = { ... };`
+    try {
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) {
+        // Replace unquoted keys with quoted keys
+        const jsonLike = match[0]
+          .replace(/([a-zA-Z0-9_]+)\s*:/g, '"$1":')
+          .replace(/'/g, '"')
+          .replace(/,\s*([}\]])/g, '$1');
+        configObj = JSON.parse(jsonLike);
+      }
+    } catch (err2) {
+      console.error("Parse error:", err2);
+    }
+  }
+
+  if (!configObj || !configObj.projectId || !configObj.apiKey) {
+    showToast('Invalid Firebase configuration. Missing apiKey or projectId.', 'error');
+    return;
+  }
+
+  try {
+    firebaseManager.connect(configObj);
+    showToast('Connected to Google Firebase Cloud successfully!', 'success');
+    closeFirebaseModal();
+    loadDashboard();
+    loadRecentTables();
+  } catch (err) {
+    showToast('Firebase connection error: ' + err.message, 'error');
+  }
+}
+
+function disconnectFirebase() {
+  if (!confirm('Disconnect from Firebase Cloud and switch back to Local SQLite mode?')) return;
+  firebaseManager.disconnect();
+  showToast('Switched back to Local Mode', 'info');
+  closeFirebaseModal();
+  loadDashboard();
+  loadRecentTables();
+}
+
+async function syncLocalToFirebase() {
+  if (!firebaseManager.connected) {
+    showToast('Please connect Firebase Cloud first', 'error');
+    return;
+  }
+
+  if (!confirm('This will upload all current local records (milk, feed, expenses) to your Firebase Firestore. Continue?')) return;
+
+  try {
+    showToast('Uploading local data to Google Cloud...', 'info');
+
+    // Fetch local records
+    const [mRes, fRes, eRes] = await Promise.all([
+      fetch('/api/milk?limit=1000').then(r => r.json()),
+      fetch('/api/feed?limit=1000').then(r => r.json()),
+      fetch('/api/expenses?limit=1000').then(r => r.json())
+    ]);
+
+    const milkRecords = mRes.records || [];
+    const feedRecords = fRes.records || [];
+    const expRecords = eRes.records || [];
+
+    let count = 0;
+    for (const m of milkRecords) {
+      await firebaseManager.saveMilk(m, null);
+      count++;
+    }
+    for (const f of feedRecords) {
+      await firebaseManager.saveFeed(f, null);
+      count++;
+    }
+    // General expenses that aren't linked to feed purchases
+    const nonFeedExpenses = expRecords.filter(e => !e.feed_purchase_id);
+    for (const e of nonFeedExpenses) {
+      await firebaseManager.saveExpense(e, null);
+      count++;
+    }
+
+    showToast(`Successfully synced ${count} records to Google Firebase!`, 'success');
+    closeFirebaseModal();
+    loadDashboard();
+    loadRecentTables();
+  } catch (err) {
+    console.error("Sync error:", err);
+    showToast('Failed to sync to Firebase: ' + err.message, 'error');
+  }
+}
     loadDashboard();
     loadExpensesTable();
   } catch (err) {

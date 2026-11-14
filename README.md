@@ -6,7 +6,14 @@ A complete, responsive web application designed specifically for **cow milk busi
 
 ## 🌟 Key Features
 
-### 1. 📸 Receipt & Transaction Slip Photo Input (New!)
+### 1. ☁️ Google Firebase Cloud Storage & Real-Time Database (New!)
+- **Cloud Firestore**: Your daily transactions (milk sales, feed purchases, operational expenses, capital investments) can now be synchronized directly to Google Cloud Firestore.
+- **Firebase Cloud Storage**: Receipt images and delivery slips are uploaded to Google Cloud Storage buckets.
+- **Access Anywhere**: Access your records from your smartphone, tablet, or home computer with zero data loss.
+- **Hybrid Offline/Online Fallback**: Seamlessly falls back to local SQLite when offline or unconfigured.
+- **1-Click Local to Cloud Sync**: Upload existing local records to Firebase Firestore with one click.
+
+### 2. 📸 Receipt & Transaction Slip Photo Input
 - **Daily Milk Slip**: Attach a photo of the dairy collection slip or receipt on mobile/camera or file picker.
 - **Feed Bill / Invoice**: Attach invoices of cattle feed, hay, or supplement purchases.
 - **Expense / UPI Receipt**: Attach payment receipts, veterinary bills, or UPI payment screenshots.
@@ -57,6 +64,16 @@ A complete, responsive web application designed specifically for **cow milk busi
 - Searchable & filterable tables for Milk Sales, Cow Feed Stock, and Expenses.
 - One-click export to **CSV format** for tax and bookkeeping records.
 - Realistic **30-Day Demo Data Loader** for immediate testing.
+
+---
+
+## ☁️ How to Connect Google Firebase (Free Tier)
+
+1. Open [Firebase Console](https://console.firebase.google.com) and click **Create a project**.
+2. Go to **Build &rarr; Firestore Database** &rarr; click **Create database** (choose *Start in test mode*).
+3. Go to **Build &rarr; Storage** &rarr; click **Get Started** (choose *Start in test mode*).
+4. Click **Project Overview (⚙️) &rarr; Project Settings &rarr; Web App (`</>`)** and copy the `firebaseConfig` object.
+5. In the GauDhan website header, click **"Connect Firebase Cloud"**, paste your config, and click **Save & Connect**!
 
 ---
 
