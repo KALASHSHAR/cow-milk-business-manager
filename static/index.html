@@ -385,16 +385,16 @@
   <!-- ======================= MODALS ======================= -->
 
   <!-- 1. ADD MILK SALE MODAL -->
-  <div id="milkModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95">
-      <div class="bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-4 text-white flex items-center justify-between">
+  <div id="milkModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 max-h-[92vh] flex flex-col">
+      <div class="bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-3.5 text-white flex items-center justify-between flex-shrink-0">
         <h3 class="font-bold text-lg flex items-center gap-2">
           <i class="fa-solid fa-bottle-water"></i> Record Daily Milk Sale
         </h3>
         <button onclick="closeMilkModal()" class="text-white/80 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <form id="form-milk" onsubmit="submitMilkSale(event)" class="p-6 space-y-4">
+      <form id="form-milk" onsubmit="submitMilkSale(event)" class="p-5 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
@@ -422,7 +422,7 @@
         </div>
 
         <!-- Calculated Total Banner -->
-        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex items-center justify-between">
           <span class="text-xs text-emerald-800 font-semibold uppercase">Total Sale Value:</span>
           <span id="milk-calculated-total" class="text-lg font-black text-emerald-700">₹0.00</span>
         </div>
@@ -457,25 +457,26 @@
           <input type="text" id="milk-notes" placeholder="Optional notes" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
         </div>
 
-        <div class="pt-2 flex justify-end gap-2.5">
+        <!-- Sticky Footer Buttons -->
+        <div class="sticky bottom-0 bg-white pt-3 pb-1 border-t border-slate-100 flex justify-end gap-2.5 z-20">
           <button type="button" onclick="closeMilkModal()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-100">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-emerald-900/20">Save Milk Record</button>
+          <button type="submit" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-md shadow-emerald-900/20">Save Milk Record</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- 2. ADD COW FEED MODAL -->
-  <div id="feedModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95">
-      <div class="bg-gradient-to-r from-amber-600 to-yellow-600 px-6 py-4 text-white flex items-center justify-between">
+  <div id="feedModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 max-h-[92vh] flex flex-col">
+      <div class="bg-gradient-to-r from-amber-600 to-yellow-600 px-6 py-3.5 text-white flex items-center justify-between flex-shrink-0">
         <h3 class="font-bold text-lg flex items-center gap-2">
           <i class="fa-solid fa-wheat-awn"></i> Add Cow Feed Purchase
         </h3>
         <button onclick="closeFeedModal()" class="text-white/80 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <form id="form-feed" onsubmit="submitFeedPurchase(event)" class="p-6 space-y-4">
+      <form id="form-feed" onsubmit="submitFeedPurchase(event)" class="p-5 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
@@ -540,25 +541,26 @@
           <input type="text" id="feed-notes" placeholder="Optional notes" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
         </div>
 
-        <div class="pt-2 flex justify-end gap-2.5">
+        <!-- Sticky Footer Buttons -->
+        <div class="sticky bottom-0 bg-white pt-3 pb-1 border-t border-slate-100 flex justify-end gap-2.5 z-20">
           <button type="button" onclick="closeFeedModal()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-100">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-amber-900/20">Save Feed Purchase</button>
+          <button type="submit" class="px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-bold shadow-md shadow-amber-900/20">Save Feed Purchase</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- 3. ADD EXPENSE / CAPITAL INVESTMENT MODAL -->
-  <div id="expenseModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95">
-      <div class="bg-gradient-to-r from-rose-600 to-red-700 px-6 py-4 text-white flex items-center justify-between">
+  <div id="expenseModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 max-h-[92vh] flex flex-col">
+      <div class="bg-gradient-to-r from-rose-600 to-red-700 px-6 py-3.5 text-white flex items-center justify-between flex-shrink-0">
         <h3 class="font-bold text-lg flex items-center gap-2">
           <i class="fa-solid fa-receipt"></i> Add Farm Expense / Investment
         </h3>
         <button onclick="closeExpenseModal()" class="text-white/80 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <form id="form-expense" onsubmit="submitExpense(event)" class="p-6 space-y-4">
+      <form id="form-expense" onsubmit="submitExpense(event)" class="p-5 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
         <!-- Type Selection: Operational vs Capital Investment -->
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1.5">Expense Nature *</label>
@@ -623,10 +625,14 @@
           </div>
         </div>
 
-        <div class="pt-2 flex justify-end gap-2.5">
+        <!-- Sticky Footer Buttons -->
+        <div class="sticky bottom-0 bg-white pt-3 pb-1 border-t border-slate-100 flex justify-end gap-2.5 z-20">
           <button type="button" onclick="closeExpenseModal()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-100">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-rose-900/20">Save Expense</button>
+          <button type="submit" class="px-6 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-bold shadow-md shadow-rose-900/20">Save Expense</button>
         </div>
+      </form>
+    </div>
+  </div>
       </form>
     </div>
   </div>
@@ -724,7 +730,7 @@
   </div>
 
   <!-- Scripts -->
-  <script src="firebaseSync.js?v=3"></script>
-  <script src="app.js?v=3"></script>
+  <script src="firebaseSync.js?v=4"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
