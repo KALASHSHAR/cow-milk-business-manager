@@ -452,49 +452,72 @@ const firebaseManager = {
     }
   },
 
-  // Upload receipt image to Firebase Cloud Storage with fast 2.5s timeout & local fallback
+  // Compress image to lightweight Base64 so it can be saved in Firestore for 100% FREE without Blaze upgrade
+  compressImageToBase64(file, maxWidth = 800, quality = 0.72) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  },
+
+  // Upload receipt image: Tries Cloud Storage -> Auto-falls back to lightweight 100% FREE Base64 in Firestore
   async uploadReceipt(file, folder = 'receipts') {
     if (!file) return null;
 
-    // Helper: try local upload immediately
-    const uploadLocally = async () => {
+    // 1. Try Firebase Cloud Storage if active (with fast 2s timeout)
+    if (this.connected && this.storage) {
       try {
-        const formData = new FormData();
-        formData.append('receipt', file);
-        const res = await fetch('/api/upload-receipt', { method: 'POST', body: formData });
-        const d = await res.json();
-        if (d.success) return d.filename;
-      } catch (e) {
-        console.warn('Local receipt upload error:', e);
+        const ext = file.name.split('.').pop() || 'jpg';
+        const filename = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+        const fileRef = this.storage.ref().child(filename);
+
+        const uploadTask = fileRef.put(file).then(snap => snap.ref.getDownloadURL());
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Storage requires Blaze or timed out')), 2000));
+        const url = await Promise.race([uploadTask, timeout]);
+        if (url) return url;
+      } catch (err) {
+        console.warn("Cloud Storage bucket not active, using compressed Firestore storage (100% Free):", err.message);
       }
-      return null;
-    };
-
-    if (!this.connected || !this.storage) {
-      return await uploadLocally();
     }
 
+    // 2. 100% FREE Solution: Compress to clean JPEG Base64 and store directly in Firestore document
     try {
-      const ext = file.name.split('.').pop() || 'jpg';
-      const filename = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
-      const fileRef = this.storage.ref().child(filename);
-
-      // Fast 2.5-second timeout so uninitialized Firebase Storage NEVER blocks saving
-      const cloudTask = async () => {
-        const snapshot = await fileRef.put(file);
-        return await snapshot.ref.getDownloadURL();
-      };
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Firebase Storage timeout (Storage bucket not initialized or slow)')), 2500)
-      );
-
-      return await Promise.race([cloudTask(), timeoutPromise]);
+      const base64 = await this.compressImageToBase64(file);
+      if (base64) return base64;
     } catch (err) {
-      console.warn("Firebase Cloud Storage upload skipped:", err.message);
-      // Immediately fallback to saving locally
-      return await uploadLocally();
+      console.warn("Base64 compression failed:", err);
     }
+
+    // 3. Fallback: local server /uploads folder
+    try {
+      const formData = new FormData();
+      formData.append('receipt', file);
+      const res = await fetch('/api/upload-receipt', { method: 'POST', body: formData });
+      const d = await res.json();
+      if (d.success) return d.filename;
+    } catch (e) {}
+
+    return null;
   },
 
   // ----------------- MILK SALES (FIRESTORE) ----------------- //
