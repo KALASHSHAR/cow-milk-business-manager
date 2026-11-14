@@ -384,53 +384,6 @@ def get_dashboard_summary(view_level='monthly', target_date=None, start_date=Non
     # 5. Trend Chart Data (Depends on view_level)
     chart_data = get_trend_chart_data(cursor, view_level, target_date, start_date, end_date)
 
-    # 6. Partner Profit Division (Kalash: 30%, Sandesh: 35%, Yash: 35%)
-    today_d = datetime.now().strftime('%Y-%m-%d')
-    month_m = datetime.now().strftime('%Y-%m')
-    year_y = datetime.now().strftime('%Y')
-
-    def calc_net_profit_filter(date_clause, params):
-        cursor.execute(f"SELECT COALESCE(SUM(total_amount), 0) FROM milk_sales WHERE {date_clause}", params)
-        r = cursor.fetchone()[0] or 0.0
-        cursor.execute(f"SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE type = 'Operational' AND {date_clause}", params)
-        o = cursor.fetchone()[0] or 0.0
-        return round(float(r - o), 2)
-
-    d_profit = calc_net_profit_filter("date = ?", [today_d])
-    m_profit = calc_net_profit_filter("date LIKE ?", [f"{month_m}%"])
-    y_profit = calc_net_profit_filter("date LIKE ?", [f"{year_y}%"])
-
-    partner_shares = {
-        'daily': {
-            'period': f'Today ({today_d})',
-            'total_profit': d_profit,
-            'kalash': round(d_profit * 0.30, 2),
-            'sandesh': round(d_profit * 0.35, 2),
-            'yash': round(d_profit * 0.35, 2)
-        },
-        'monthly': {
-            'period': f'This Month ({month_m})',
-            'total_profit': m_profit,
-            'kalash': round(m_profit * 0.30, 2),
-            'sandesh': round(m_profit * 0.35, 2),
-            'yash': round(m_profit * 0.35, 2)
-        },
-        'yearly': {
-            'period': f'This Year ({year_y})',
-            'total_profit': y_profit,
-            'kalash': round(y_profit * 0.30, 2),
-            'sandesh': round(y_profit * 0.35, 2),
-            'yash': round(y_profit * 0.35, 2)
-        },
-        'current': {
-            'period': period_label,
-            'total_profit': net_profit,
-            'kalash': round(net_profit * 0.30, 2),
-            'sandesh': round(net_profit * 0.35, 2),
-            'yash': round(net_profit * 0.35, 2)
-        }
-    }
-
     conn.close()
 
     return {
@@ -450,8 +403,7 @@ def get_dashboard_summary(view_level='monthly', target_date=None, start_date=Non
         'cost_per_liter': cost_per_liter,
         'total_entries': milk_stats['total_entries'],
         'category_breakdown': category_breakdown,
-        'chart_data': chart_data,
-        'partner_shares': partner_shares
+        'chart_data': chart_data
     }
 
 def get_trend_chart_data(cursor, view_level, target_date, start_date=None, end_date=None):
