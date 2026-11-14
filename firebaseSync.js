@@ -345,6 +345,13 @@ const firebaseManager = {
     const btnLogin = document.getElementById('btn-google-login');
     const badge = document.getElementById('userProfileBadge');
     const unauthModal = document.getElementById('unauthorizedModal');
+    const lockScreen = document.getElementById('authGuardLockScreen');
+
+    if (user && role && role !== 'unauthorized') {
+      if (lockScreen) lockScreen.classList.add('hidden');
+    } else {
+      if (lockScreen) lockScreen.classList.remove('hidden');
+    }
 
     if (user) {
       if (btnLogin) btnLogin.classList.add('hidden');
