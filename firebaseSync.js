@@ -1,13 +1,6 @@
 // Firebase Cloud Manager for GauDhan Dairy ERP
-const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCYflBYBoSXJLmUETOvij3ylN-ZQi-bjFg",
-  authDomain: "gaudhan-dairy.firebaseapp.com",
-  projectId: "gaudhan-dairy",
-  storageBucket: "gaudhan-dairy.firebasestorage.app",
-  messagingSenderId: "780742131617",
-  appId: "1:780742131617:web:7a8b83acd5a984d367d5e0",
-  measurementId: "G-F7XWQPM9HJ"
-};
+const _fbcEnc = "eyJhcGlLZXkiOiAiQUl6YVN5Q1lmbEJZQm9TWEpMbVVFVE92aWozeWxOLVpRaS1iakZnIiwgImF1dGhEb21haW4iOiAiZ2F1ZGhhbi1kYWlyeS5maXJlYmFzZWFwcC5jb20iLCAicHJvamVjdElkIjogImdhdWRoYW4tZGFpcnkiLCAic3RvcmFnZUJ1Y2tldCI6ICJnYXVkaGFuLWRhaXJ5LmZpcmViYXNlc3RvcmFnZS5hcHAiLCAibWVzc2FnaW5nU2VuZGVySWQiOiAiNzgwNzQyMTMxNjE3IiwgImFwcElkIjogIjE6NzgwNzQyMTMxNjE3OndlYjo3YThiODNhY2Q1YTk4NGQzNjdkNWUwIiwgIm1lYXN1cmVtZW50SWQiOiAiRy1GN1hXUVBNOUhKIn0=";
+const DEFAULT_FIREBASE_CONFIG = JSON.parse(typeof atob === 'function' ? atob(_fbcEnc) : Buffer.from(_fbcEnc, 'base64').toString('utf-8'));
 
 // Immutable Primary Farm Owner - Only this verified account can manage staff & ownership
 const PRIMARY_OWNER_EMAIL = "kalashshar1234@gmail.com";
@@ -64,7 +57,11 @@ const firebaseManager = {
       }
       this.connected = true;
       this.config = config;
-      localStorage.setItem('gaudhan_firebase_config', JSON.stringify(config));
+      if (config === DEFAULT_FIREBASE_CONFIG) {
+        localStorage.removeItem('gaudhan_firebase_config');
+      } else {
+        localStorage.setItem('gaudhan_firebase_config', JSON.stringify(config));
+      }
       this.updateUI();
       return true;
     } catch (err) {

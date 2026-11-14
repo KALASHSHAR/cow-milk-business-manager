@@ -1287,16 +1287,11 @@ async function deleteExpense(id) {
 // ----------------- FIREBASE CONFIG MODAL & SYNC ----------------- //
 
 function openFirebaseModal() {
-  const modal = document.getElementById('firebaseModal');
-  const input = document.getElementById('firebaseConfigInput');
-  const saved = localStorage.getItem('gaudhan_firebase_config') || (firebaseManager.config ? JSON.stringify(firebaseManager.config) : '');
-  if (saved && !input.value) {
-    try {
-      input.value = JSON.stringify(JSON.parse(saved), null, 2);
-    } catch (e) {
-      input.value = saved;
-    }
+  if (firebaseManager.currentUserRole !== 'Owner') {
+    showToast('Permission Denied: Only the Farm Owner can view Cloud Status.', 'error');
+    return;
   }
+  const modal = document.getElementById('firebaseModal');
   if (typeof firebaseManager !== 'undefined') {
     firebaseManager.updateUI();
   }
