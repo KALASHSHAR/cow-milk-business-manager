@@ -93,8 +93,8 @@ const firebaseManager = {
         } catch (err) {
           console.error("Auth access verification error:", err);
           this.currentUser = user;
-          this.currentUserRole = 'Staff';
-          this.updateAuthUI(user, 'Staff');
+          this.currentUserRole = 'Founder';
+          this.updateAuthUI(user, 'Founder');
           if (typeof closeLoginModal === 'function') closeLoginModal();
         }
       } else {
@@ -134,7 +134,8 @@ const firebaseManager = {
         if (doc.exists) {
           const d = doc.data();
           // Safety: ONLY PRIMARY_OWNER_EMAIL can ever hold the Owner role
-          const role = (d.role === 'Owner') ? 'Staff' : (d.role || 'Staff');
+          let role = (d.role === 'Owner') ? 'Founder' : (d.role || 'Founder');
+          if (role === 'Staff') role = 'Founder';
           return { role: role, authorized: true };
         }
       } catch (cloudErr) {
@@ -151,7 +152,8 @@ const firebaseManager = {
       });
       const data = await res.json();
       if (data.authorized && data.role) {
-        const role = (data.role === 'Owner') ? 'Staff' : data.role;
+        let role = (data.role === 'Owner') ? 'Founder' : data.role;
+        if (role === 'Staff') role = 'Founder';
         return { role: role, authorized: true };
       }
     } catch (localErr) {
@@ -306,17 +308,17 @@ const firebaseManager = {
     }
   },
 
-  async addAuthorizedUser(email, name = '', role = 'Staff') {
+  async addAuthorizedUser(email, name = '', role = 'Founder') {
     if (this.currentUserRole !== 'Owner') {
-      throw new Error("Security Restriction: Only the Primary Farm Owner can manage staff access.");
+      throw new Error("Security Restriction: Only the Primary Farm Owner can manage founder access.");
     }
     const cleanEmail = email.trim().toLowerCase();
     if (cleanEmail === PRIMARY_OWNER_EMAIL.toLowerCase()) {
       throw new Error("Owner email is already registered as Primary Owner.");
     }
 
-    // Non-owner accounts can only be Staff or Admin, never Owner
-    const safeRole = (role === 'Owner') ? 'Admin' : (role || 'Staff');
+    // Non-owner accounts can only be Founder or Admin, never Owner
+    const safeRole = (role === 'Owner') ? 'Admin' : (role || 'Founder');
     const payload = {
       email: cleanEmail,
       name: name.trim() || cleanEmail.split('@')[0],
@@ -353,7 +355,7 @@ const firebaseManager = {
 
   async removeAuthorizedUser(email) {
     if (this.currentUserRole !== 'Owner') {
-      throw new Error("Security Restriction: Only the Primary Farm Owner can revoke staff access.");
+      throw new Error("Security Restriction: Only the Primary Farm Owner can revoke founder access.");
     }
     const cleanEmail = email.trim().toLowerCase();
     if (cleanEmail === PRIMARY_OWNER_EMAIL.toLowerCase()) {
@@ -407,7 +409,7 @@ const firebaseManager = {
       if (avatar) avatar.src = photo;
       if (nameEl) nameEl.innerText = (user.displayName || user.email).split(' ')[0];
       
-      const roleText = role === 'Owner' ? '👑 Owner' : (role === 'Admin' ? '🛡️ Admin' : (role === 'Staff' ? '👤 Staff' : '⚠️ Pending'));
+      const roleText = role === 'Owner' ? '👑 Owner' : (role === 'Admin' ? '🛡️ Admin' : ((role === 'Founder' || role === 'Staff') ? '🤝 Founder' : '⚠️ Pending'));
       if (roleEl) roleEl.innerText = roleText;
       if (dropEmail) dropEmail.innerText = user.email;
       if (dropRole) dropRole.innerText = roleText;
@@ -427,7 +429,7 @@ const firebaseManager = {
         if (unauthModal) unauthModal.classList.add('hidden');
       }
 
-      // ONLY the Primary Farm Owner can see and use the Manage Staff and Admin menus
+      // ONLY the Primary Farm Owner can see and use the Manage Founders and Admin menus
       const isOwner = role === 'Owner';
       const manageMenuBtn = document.getElementById('btn-manage-access-menu');
       const moreManageBtn = document.getElementById('btn-more-manage-access');

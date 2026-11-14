@@ -1655,7 +1655,7 @@ document.addEventListener('click', (e) => {
 
 function openAccessModal() {
   if (firebaseManager.currentUserRole !== 'Owner') {
-    showToast('Permission Denied: Only the Farm Owner can manage staff access.', 'error');
+    showToast('Permission Denied: Only the Farm Owner can manage founder access.', 'error');
     return;
   }
   document.getElementById('userDropdownMenu')?.classList.add('hidden');
@@ -1686,10 +1686,10 @@ async function loadAuthorizedUsersList() {
 
   try {
     const users = await firebaseManager.getAuthorizedUsers();
-    if (countEl) countEl.innerText = `${users.length} User${users.length === 1 ? '' : 's'}`;
+    if (countEl) countEl.innerText = `${users.length} Member${users.length === 1 ? '' : 's'}`;
 
     if (!users || users.length === 0) {
-      container.innerHTML = `<div class="p-4 bg-slate-50 text-slate-400 rounded-xl text-center text-xs">No team members added yet. Add staff above to grant access!</div>`;
+      container.innerHTML = `<div class="p-4 bg-slate-50 text-slate-400 rounded-xl text-center text-xs">No team members added yet. Add founders above to grant access!</div>`;
       return;
     }
 
@@ -1699,7 +1699,7 @@ async function loadAuthorizedUsersList() {
     container.innerHTML = users.map(u => {
       const email = u.email || u.id;
       const name = u.name || email.split('@')[0];
-      const role = u.role || 'Staff';
+      const role = u.role || 'Founder';
       const isUserOwner = role === 'Owner' || email.toLowerCase() === 'kalashshar1234@gmail.com';
       const isSelf = email.toLowerCase() === currentEmail;
 
@@ -1707,7 +1707,7 @@ async function loadAuthorizedUsersList() {
         ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">👑 Owner</span>`
         : (role === 'Admin'
             ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">🛡️ Admin</span>`
-            : `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">👤 Staff</span>`);
+            : `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">🤝 Founder</span>`);
 
       return `
         <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2">
@@ -1748,7 +1748,7 @@ async function loadAuthorizedUsersList() {
 async function submitAddAuthorizedUser(e) {
   e.preventDefault();
   if (firebaseManager.currentUserRole !== 'Owner') {
-    showToast('Permission Denied: Only the Farm Owner can authorize staff.', 'error');
+    showToast('Permission Denied: Only the Farm Owner can authorize founders.', 'error');
     return;
   }
 
@@ -1779,7 +1779,7 @@ async function submitAddAuthorizedUser(e) {
 
 async function handleDeleteAuthorizedUser(email) {
   if (firebaseManager.currentUserRole !== 'Owner') {
-    showToast('Permission Denied: Only the Farm Owner can revoke staff access.', 'error');
+    showToast('Permission Denied: Only the Farm Owner can revoke founder access.', 'error');
     return;
   }
 

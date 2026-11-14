@@ -608,7 +608,7 @@ def get_authorized_users():
     conn.close()
     return users
 
-def add_or_update_authorized_user(email, name="", role="Staff", photo_url="", added_by=""):
+def add_or_update_authorized_user(email, name="", role="Founder", photo_url="", added_by=""):
     conn = get_db()
     cursor = conn.cursor()
     email_clean = email.strip().lower()

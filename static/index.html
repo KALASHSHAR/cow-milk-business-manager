@@ -106,7 +106,7 @@
               <button id="btn-manage-access-menu" onclick="openAccessModal()" class="w-full text-left px-3.5 py-2.5 hover:bg-indigo-50 active:bg-indigo-100 flex items-center justify-between text-indigo-900 font-bold rounded-xl border border-indigo-200 bg-indigo-50/70 transition-all shadow-sm">
                 <span class="flex items-center gap-2.5">
                   <i class="fa-solid fa-user-shield text-base text-indigo-600"></i>
-                  <span>Manage Staff & Access</span>
+                  <span>Manage Founders & Access</span>
                 </span>
                 <i class="fa-solid fa-chevron-right text-[11px] text-indigo-400"></i>
               </button>
@@ -147,7 +147,7 @@
           </button>
           <div id="moreMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl py-2 z-50 text-slate-700 border border-slate-100 text-sm">
             <button id="btn-more-manage-access" onclick="openAccessModal()" class="w-full text-left px-4 py-2 hover:bg-indigo-50 flex items-center gap-2.5 text-indigo-700 font-semibold">
-              <i class="fa-solid fa-user-shield text-indigo-600"></i> Manage Staff & Access
+              <i class="fa-solid fa-user-shield text-indigo-600"></i> Manage Founders & Access
             </button>
             <button onclick="openFirebaseModal()" class="w-full text-left px-4 py-2 hover:bg-amber-50 flex items-center gap-2.5 text-amber-700">
               <i class="fa-solid fa-cloud text-amber-500"></i> Firebase Cloud Settings
@@ -928,7 +928,7 @@
     </div>
   </div>
 
-  <!-- 6. MANAGE STAFF & ACCESS CONTROL MODAL -->
+  <!-- 6. MANAGE FOUNDERS & ACCESS CONTROL MODAL -->
   <div id="accessModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
     <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-xl w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all modal-sheet-enter max-h-[88vh] sm:max-h-[90vh] flex flex-col pb-safe">
       <!-- Modal Header -->
@@ -940,8 +940,8 @@
               <i class="fa-solid fa-user-shield text-indigo-300"></i>
             </div>
             <div>
-              <h3 class="font-bold text-base sm:text-lg leading-tight">Manage Staff & Access</h3>
-              <p class="text-[11px] text-indigo-200">Only the Primary Owner can add or revoke staff</p>
+              <h3 class="font-bold text-base sm:text-lg leading-tight">Manage Founders & Access</h3>
+              <p class="text-[11px] text-indigo-200">Only the Primary Owner can add or revoke founders</p>
             </div>
           </div>
           <button onclick="closeAccessModal()" class="text-white/80 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
@@ -949,26 +949,26 @@
       </div>
 
       <div class="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1 text-sm">
-        <!-- Add Staff Form -->
+        <!-- Add Founder Form -->
         <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
           <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-            <i class="fa-solid fa-user-plus text-indigo-600"></i> Authorize New Team Member
+            <i class="fa-solid fa-user-plus text-indigo-600"></i> Authorize New Founder
           </h4>
           <form id="form-add-access-user" onsubmit="submitAddAuthorizedUser(event)" class="space-y-3">
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Google Email Address *</label>
-              <input type="email" id="access-user-email" required placeholder="e.g. staff.member@gmail.com" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+              <input type="email" id="access-user-email" required placeholder="e.g. founder@gmail.com" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Staff Member Name</label>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Founder Name</label>
                 <input type="text" id="access-user-name" placeholder="e.g. Suresh Patel" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Role / Permissions *</label>
                 <select id="access-user-role" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                  <option value="Staff">👤 Staff (Record Milk & Feed only)</option>
-                  <option value="Admin">🛡️ Admin (Full Financial & Delete Access)</option>
+                  <option value="Founder">🤝 Founder (Record Milk & Feed only)</option>
+                  <option value="Admin">🛡️ Co-Owner / Admin (Full Access)</option>
                 </select>
               </div>
             </div>
@@ -982,7 +982,7 @@
         <div>
           <div class="flex items-center justify-between mb-2.5">
             <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-              <i class="fa-solid fa-users text-slate-500"></i> Authorized Staff & Owners
+              <i class="fa-solid fa-users text-slate-500"></i> Authorized Founders & Owners
             </h4>
             <span id="access-user-count" class="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-0.5 rounded-full">0 Users</span>
           </div>
@@ -998,8 +998,6 @@
         <button type="button" onclick="closeAccessModal()" class="w-full sm:w-auto px-6 py-2.5 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-sm">
           Done
         </button>
-      </div>
-        <button type="button" onclick="closeAccessModal()" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Close</button>
       </div>
     </div>
   </div>
@@ -1023,7 +1021,7 @@
       </div>
       <p class="text-xs text-slate-600 bg-amber-50 p-3 rounded-xl border border-amber-200 text-amber-900 text-left">
         <i class="fa-solid fa-circle-info text-amber-600 mr-1"></i>
-        Please ask the GauDhan Dairy Farm Owner to grant your email access in the <strong>"Manage Staff & Access"</strong> panel.
+        Please ask the GauDhan Dairy Farm Owner to grant your email access in the <strong>"Manage Founders & Access"</strong> panel.
       </p>
       <div class="flex items-center gap-2 pt-2">
         <button onclick="handleGoogleSignOut()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all shadow-md">
@@ -1046,7 +1044,7 @@
             </div>
             <div>
               <h3 class="font-bold text-base sm:text-lg leading-tight">Sign in to GauDhan Dairy</h3>
-              <p class="text-[11px] text-emerald-200">Owner & Staff Authentication</p>
+              <p class="text-[11px] text-emerald-200">Owner & Founder Authentication</p>
             </div>
           </div>
           <button onclick="closeLoginModal()" class="text-white/80 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
@@ -1137,7 +1135,7 @@
           🔒 Private Business Portal
         </span>
         <p class="text-xs text-slate-500 mt-2.5 leading-relaxed">
-          This system is private and restricted strictly to the farm owner and authorized staff. Please sign in to verify your identity.
+          This system is private and restricted strictly to the farm owner and authorized founders. Please sign in to verify your identity.
         </p>
       </div>
 
@@ -1178,15 +1176,15 @@
       </div>
 
       <div class="p-4 space-y-2 overflow-y-auto text-sm">
-        <!-- 1. Manage Staff (Exclusive for Farm Owner) -->
+        <!-- 1. Manage Founders (Exclusive for Farm Owner) -->
         <button id="btn-mobile-more-access" onclick="openAccessModal(); closeMobileMoreSheet();" class="w-full p-3.5 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-2xl flex items-center justify-between font-bold text-xs active:scale-98 transition-all shadow-sm">
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm shadow-md shadow-indigo-900/20">
               <i class="fa-solid fa-user-shield"></i>
             </div>
             <div class="text-left">
-              <span class="block text-xs font-black">Manage Staff & Access</span>
-              <span class="block text-[10px] text-indigo-600 font-normal">Add staff & restrict view/entry</span>
+              <span class="block text-xs font-black">Manage Founders & Access</span>
+              <span class="block text-[10px] text-indigo-600 font-normal">Add founders & manage access</span>
             </div>
           </div>
           <i class="fa-solid fa-chevron-right text-indigo-400 text-xs"></i>
@@ -1270,7 +1268,7 @@
   </nav>
 
   <!-- Scripts -->
-  <script src="firebaseSync.js?v=14"></script>
-  <script src="app.js?v=14"></script>
+  <script src="firebaseSync.js?v=15"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>

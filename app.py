@@ -212,7 +212,7 @@ def api_add_authorized_user():
     if not email:
         return jsonify({"success": False, "error": "Email is required"}), 400
     name = data.get('name', '')
-    role = data.get('role', 'Staff')
+    role = data.get('role', 'Founder')
     photo_url = data.get('photo_url', '')
     added_by = data.get('added_by', '')
     db.add_or_update_authorized_user(email, name, role, photo_url, added_by)
