@@ -393,12 +393,6 @@ async function saveFounderInvestments(e) {
     }
   }
 }
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = originalHtml;
-    }
-  }
-}
 
 function renderFinancialChart(chartData) {
   const ctx = document.getElementById('financialTrendChart').getContext('2d');
