@@ -900,7 +900,7 @@ async function deleteExpense(id) {
 function openFirebaseModal() {
   const modal = document.getElementById('firebaseModal');
   const input = document.getElementById('firebaseConfigInput');
-  const saved = localStorage.getItem('gaudhan_firebase_config');
+  const saved = localStorage.getItem('gaudhan_firebase_config') || (firebaseManager.config ? JSON.stringify(firebaseManager.config) : '');
   if (saved && !input.value) {
     try {
       input.value = JSON.stringify(JSON.parse(saved), null, 2);
@@ -1016,12 +1016,6 @@ async function syncLocalToFirebase() {
   } catch (err) {
     console.error("Sync error:", err);
     showToast('Failed to sync to Firebase: ' + err.message, 'error');
-  }
-}
-    loadDashboard();
-    loadExpensesTable();
-  } catch (err) {
-    showToast('Failed to delete', 'error');
   }
 }
 

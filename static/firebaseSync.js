@@ -1,4 +1,14 @@
 // Firebase Cloud Manager for GauDhan Dairy ERP
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCYflBYBoSXJLmUETOvij3ylN-ZQi-bjFg",
+  authDomain: "gaudhan-dairy.firebaseapp.com",
+  projectId: "gaudhan-dairy",
+  storageBucket: "gaudhan-dairy.firebasestorage.app",
+  messagingSenderId: "780742131617",
+  appId: "1:780742131617:web:7a8b83acd5a984d367d5e0",
+  measurementId: "G-F7XWQPM9HJ"
+};
+
 const firebaseManager = {
   app: null,
   db: null,
@@ -8,12 +18,23 @@ const firebaseManager = {
 
   init() {
     const savedConfig = localStorage.getItem('gaudhan_firebase_config');
+    let configToUse = null;
     if (savedConfig) {
       try {
-        const parsed = JSON.parse(savedConfig);
-        this.connect(parsed);
+        configToUse = JSON.parse(savedConfig);
       } catch (e) {
         console.error("Failed to parse saved Firebase config", e);
+      }
+    }
+    if (!configToUse && DEFAULT_FIREBASE_CONFIG && DEFAULT_FIREBASE_CONFIG.apiKey) {
+      configToUse = DEFAULT_FIREBASE_CONFIG;
+    }
+
+    if (configToUse) {
+      try {
+        this.connect(configToUse);
+      } catch (err) {
+        console.warn("Auto-connect to Firebase failed, falling back to local mode", err);
       }
     }
     this.updateUI();
