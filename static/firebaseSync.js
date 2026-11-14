@@ -85,6 +85,11 @@ const firebaseManager = {
 
   initAuthObserver() {
     if (!this.auth) return;
+    if (typeof this.auth.getRedirectResult === 'function') {
+      this.auth.getRedirectResult().catch(err => {
+        console.warn("Redirect result:", err);
+      });
+    }
     this.auth.onAuthStateChanged(async (user) => {
       if (user) {
         try {
@@ -92,6 +97,7 @@ const firebaseManager = {
           this.currentUser = user;
           this.currentUserRole = access.role;
           this.updateAuthUI(user, access.role);
+          if (typeof closeLoginModal === 'function') closeLoginModal();
           if (typeof loadAuthorizedUsersList === 'function' && (access.role === 'Owner' || access.role === 'Admin')) {
             loadAuthorizedUsersList();
           }
@@ -100,6 +106,7 @@ const firebaseManager = {
           this.currentUser = user;
           this.currentUserRole = 'Staff';
           this.updateAuthUI(user, 'Staff');
+          if (typeof closeLoginModal === 'function') closeLoginModal();
         }
       } else {
         // If no firebase auth user, check if we have a direct login saved
