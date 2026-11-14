@@ -712,6 +712,13 @@ function closeReceiptModal() {
 
 async function submitMilkSale(e) {
   e.preventDefault();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.innerText : 'Save Milk Record';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Saving...';
+  }
+
   const fileInput = document.getElementById('milk-receipt-file');
   const receiptFile = fileInput && fileInput.files ? fileInput.files[0] : null;
 
@@ -727,10 +734,18 @@ async function submitMilkSale(e) {
   };
 
   try {
+    let savedToCloud = false;
     if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
-      await firebaseManager.saveMilk(payload, receiptFile);
-      showToast('Milk sale saved to Firebase Cloud!', 'success');
-    } else {
+      try {
+        await firebaseManager.saveMilk(payload, receiptFile);
+        savedToCloud = true;
+        showToast('Milk sale saved to Google Cloud!', 'success');
+      } catch (cloudErr) {
+        console.warn('Firebase write error, falling back to local SQLite:', cloudErr);
+      }
+    }
+
+    if (!savedToCloud) {
       let receiptFilename = await uploadReceiptFile('milk-receipt-file');
       payload.receipt_image = receiptFilename;
 
@@ -741,7 +756,7 @@ async function submitMilkSale(e) {
       });
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
-      showToast('Milk sale recorded with receipt!', 'success');
+      showToast('Milk sale recorded locally!', 'success');
     }
 
     closeMilkModal();
@@ -750,12 +765,25 @@ async function submitMilkSale(e) {
     loadDashboard();
     loadMilkTable();
   } catch (err) {
-    showToast(err.message, 'error');
+    console.error('Submit milk error:', err);
+    showToast(err.message || 'Failed to save record', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalBtnText;
+    }
   }
 }
 
 async function submitFeedPurchase(e) {
   e.preventDefault();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.innerText : 'Save Feed Purchase';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Saving...';
+  }
+
   const fileInput = document.getElementById('feed-receipt-file');
   const receiptFile = fileInput && fileInput.files ? fileInput.files[0] : null;
 
@@ -771,10 +799,18 @@ async function submitFeedPurchase(e) {
   };
 
   try {
+    let savedToCloud = false;
     if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
-      await firebaseManager.saveFeed(payload, receiptFile);
-      showToast('Feed purchase saved to Firebase Cloud!', 'success');
-    } else {
+      try {
+        await firebaseManager.saveFeed(payload, receiptFile);
+        savedToCloud = true;
+        showToast('Feed purchase saved to Google Cloud!', 'success');
+      } catch (cloudErr) {
+        console.warn('Firebase feed write error, falling back:', cloudErr);
+      }
+    }
+
+    if (!savedToCloud) {
       let receiptFilename = await uploadReceiptFile('feed-receipt-file');
       payload.receipt_image = receiptFilename;
 
@@ -785,7 +821,7 @@ async function submitFeedPurchase(e) {
       });
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
-      showToast('Cow feed purchase & receipt saved!', 'success');
+      showToast('Cow feed purchase saved locally!', 'success');
     }
 
     closeFeedModal();
@@ -797,12 +833,25 @@ async function submitFeedPurchase(e) {
     loadFeedTable();
     loadExpensesTable();
   } catch (err) {
-    showToast(err.message, 'error');
+    console.error('Submit feed error:', err);
+    showToast(err.message || 'Failed to save feed', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalBtnText;
+    }
   }
 }
 
 async function submitExpense(e) {
   e.preventDefault();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.innerText : 'Save Expense';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Saving...';
+  }
+
   const fileInput = document.getElementById('expense-receipt-file');
   const receiptFile = fileInput && fileInput.files ? fileInput.files[0] : null;
 
@@ -816,10 +865,18 @@ async function submitExpense(e) {
   };
 
   try {
+    let savedToCloud = false;
     if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
-      await firebaseManager.saveExpense(payload, receiptFile);
-      showToast('Expense / Investment saved to Firebase Cloud!', 'success');
-    } else {
+      try {
+        await firebaseManager.saveExpense(payload, receiptFile);
+        savedToCloud = true;
+        showToast('Expense saved to Google Cloud!', 'success');
+      } catch (cloudErr) {
+        console.warn('Firebase expense write error, falling back:', cloudErr);
+      }
+    }
+
+    if (!savedToCloud) {
       let receiptFilename = await uploadReceiptFile('expense-receipt-file');
       payload.receipt_image = receiptFilename;
 
@@ -830,7 +887,7 @@ async function submitExpense(e) {
       });
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
-      showToast('Expense / Investment & receipt recorded!', 'success');
+      showToast('Expense recorded locally!', 'success');
     }
 
     closeExpenseModal();
@@ -840,7 +897,13 @@ async function submitExpense(e) {
     loadDashboard();
     loadExpensesTable();
   } catch (err) {
-    showToast(err.message, 'error');
+    console.error('Submit expense error:', err);
+    showToast(err.message || 'Failed to save expense', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalBtnText;
+    }
   }
 }
 
@@ -918,6 +981,49 @@ function closeFirebaseModal() {
   document.getElementById('firebaseModal').classList.add('hidden');
 }
 
+function extractFirebaseConfig(raw) {
+  if (!raw) return null;
+  // 1. Try direct JSON parse
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.apiKey && parsed.projectId) return parsed;
+  } catch (e) {}
+
+  // 2. Look for firebaseConfig = { ... } object specifically
+  const fcMatch = raw.match(/firebaseConfig\s*=\s*(\{[\s\S]*?\});?/);
+  if (fcMatch) {
+    try {
+      const jsonLike = fcMatch[1]
+        .replace(/([a-zA-Z0-9_]+)\s*:/g, '"$1":')
+        .replace(/'/g, '"')
+        .replace(/,\s*([}\]])/g, '$1');
+      const parsed = JSON.parse(jsonLike);
+      if (parsed.apiKey && parsed.projectId) return parsed;
+    } catch (e) {}
+  }
+
+  // 3. Fallback: extract individual keys using regex
+  const getField = (field) => {
+    const m = raw.match(new RegExp(`${field}["']?\\s*:\\s*["']([^"']+)["']`));
+    return m ? m[1] : null;
+  };
+
+  const apiKey = getField('apiKey');
+  const projectId = getField('projectId');
+  if (apiKey && projectId) {
+    return {
+      apiKey,
+      authDomain: getField('authDomain') || `${projectId}.firebaseapp.com`,
+      projectId,
+      storageBucket: getField('storageBucket') || `${projectId}.firebasestorage.app`,
+      messagingSenderId: getField('messagingSenderId') || '',
+      appId: getField('appId') || '',
+      measurementId: getField('measurementId') || ''
+    };
+  }
+  return null;
+}
+
 function saveFirebaseConfig() {
   const raw = document.getElementById('firebaseConfigInput').value.trim();
   if (!raw) {
@@ -925,26 +1031,7 @@ function saveFirebaseConfig() {
     return;
   }
 
-  let configObj = null;
-  // Try direct JSON parse
-  try {
-    configObj = JSON.parse(raw);
-  } catch (e) {
-    // If user pasted JS code like `const firebaseConfig = { ... };`
-    try {
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) {
-        // Replace unquoted keys with quoted keys
-        const jsonLike = match[0]
-          .replace(/([a-zA-Z0-9_]+)\s*:/g, '"$1":')
-          .replace(/'/g, '"')
-          .replace(/,\s*([}\]])/g, '$1');
-        configObj = JSON.parse(jsonLike);
-      }
-    } catch (err2) {
-      console.error("Parse error:", err2);
-    }
-  }
+  const configObj = extractFirebaseConfig(raw);
 
   if (!configObj || !configObj.projectId || !configObj.apiKey) {
     showToast('Invalid Firebase configuration. Missing apiKey or projectId.', 'error');

@@ -114,15 +114,28 @@ const firebaseManager = {
     }
   },
 
-  // Upload receipt image to Firebase Cloud Storage
+  // Upload receipt image to Firebase Cloud Storage with local fallback
   async uploadReceipt(file, folder = 'receipts') {
     if (!this.connected || !file) return null;
-    const ext = file.name.split('.').pop() || 'jpg';
-    const filename = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
-    const fileRef = this.storage.ref().child(filename);
-    const snapshot = await fileRef.put(file);
-    const downloadUrl = await snapshot.ref.getDownloadURL();
-    return downloadUrl;
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filename = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
+      const fileRef = this.storage.ref().child(filename);
+      const snapshot = await fileRef.put(file);
+      const downloadUrl = await snapshot.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (err) {
+      console.warn("Firebase Storage upload error, falling back:", err);
+      // Fallback: try uploading to local server if available
+      try {
+        const formData = new FormData();
+        formData.append('receipt', file);
+        const res = await fetch('/api/upload-receipt', { method: 'POST', body: formData });
+        const d = await res.json();
+        if (d.success) return d.filename;
+      } catch (localErr) {}
+      return null;
+    }
   },
 
   // ----------------- MILK SALES (FIRESTORE) ----------------- //
