@@ -76,6 +76,19 @@ def init_db():
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('farm_name', 'Kamdhenu Cow Milk Dairy')")
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('default_milk_rate', '45')")
 
+    # Authorized users for role-based access control
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS authorized_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        name TEXT,
+        role TEXT NOT NULL DEFAULT 'Staff', -- 'Owner', 'Admin', 'Staff'
+        photo_url TEXT,
+        added_by TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     # Migrate columns if not present
     for table in ['milk_sales', 'feed_purchases', 'expenses']:
         cursor.execute(f"PRAGMA table_info({table})")
@@ -584,3 +597,67 @@ def reset_all_data():
     conn.commit()
     conn.close()
     return True
+
+# ----------------- ACCESS MANAGEMENT & USERS ----------------- #
+
+def get_authorized_users():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM authorized_users ORDER BY role = 'Owner' DESC, role = 'Admin' DESC, created_at ASC")
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return users
+
+def add_or_update_authorized_user(email, name="", role="Staff", photo_url="", added_by=""):
+    conn = get_db()
+    cursor = conn.cursor()
+    email_clean = email.strip().lower()
+    
+    # If no users exist yet, first user automatically becomes Owner
+    cursor.execute("SELECT COUNT(*) as count FROM authorized_users")
+    count = cursor.fetchone()['count']
+    if count == 0:
+        role = 'Owner'
+        
+    cursor.execute("""
+        INSERT INTO authorized_users (email, name, role, photo_url, added_by)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(email) DO UPDATE SET
+            name = CASE WHEN excluded.name != '' THEN excluded.name ELSE authorized_users.name END,
+            role = CASE WHEN authorized_users.role = 'Owner' THEN 'Owner' ELSE excluded.role END,
+            photo_url = CASE WHEN excluded.photo_url != '' THEN excluded.photo_url ELSE authorized_users.photo_url END
+    """, (email_clean, name, role, photo_url, added_by))
+    conn.commit()
+    conn.close()
+    return True
+
+def delete_authorized_user(email):
+    conn = get_db()
+    cursor = conn.cursor()
+    email_clean = email.strip().lower()
+    cursor.execute("SELECT role FROM authorized_users WHERE email = ?", (email_clean,))
+    row = cursor.fetchone()
+    if row and row['role'] == 'Owner':
+        conn.close()
+        return False, "Cannot delete Primary Owner"
+    cursor.execute("DELETE FROM authorized_users WHERE email = ?", (email_clean,))
+    conn.commit()
+    conn.close()
+    return True, "User removed"
+
+def get_user_role(email):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) as count FROM authorized_users")
+    count = cursor.fetchone()['count']
+    if count == 0:
+        conn.close()
+        return "Owner"
+        
+    cursor.execute("SELECT role, name FROM authorized_users WHERE email = ?", (email.strip().lower(),))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return row['role']
+    return None
+

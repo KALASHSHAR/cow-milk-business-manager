@@ -198,6 +198,40 @@ def export_csv():
         headers={"Content-disposition": f"attachment; filename={filename}"}
     )
 
+# ----------------- ACCESS MANAGEMENT API ----------------- #
+
+@app.route('/api/access/users', methods=['GET'])
+def api_get_authorized_users():
+    users = db.get_authorized_users()
+    return jsonify({"success": True, "users": users})
+
+@app.route('/api/access/users', methods=['POST'])
+def api_add_authorized_user():
+    data = request.json or {}
+    email = data.get('email', '').strip().lower()
+    if not email:
+        return jsonify({"success": False, "error": "Email is required"}), 400
+    name = data.get('name', '')
+    role = data.get('role', 'Staff')
+    photo_url = data.get('photo_url', '')
+    added_by = data.get('added_by', '')
+    db.add_or_update_authorized_user(email, name, role, photo_url, added_by)
+    return jsonify({"success": True, "message": f"User {email} authorized as {role}"})
+
+@app.route('/api/access/users/<email>', methods=['DELETE'])
+def api_delete_authorized_user(email):
+    success, msg = db.delete_authorized_user(email)
+    if not success:
+        return jsonify({"success": False, "error": msg}), 400
+    return jsonify({"success": True, "message": msg})
+
+@app.route('/api/access/check', methods=['POST'])
+def api_check_user_access():
+    data = request.json or {}
+    email = data.get('email', '').strip().lower()
+    role = db.get_user_role(email)
+    return jsonify({"success": True, "role": role, "authorized": role is not None})
+
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory(app.static_folder, path)

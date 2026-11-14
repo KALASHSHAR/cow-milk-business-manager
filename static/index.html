@@ -16,6 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Firebase SDK (Compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <script>
@@ -65,8 +66,44 @@
         </div>
       </div>
 
-      <!-- Quick Action Buttons -->
+      <!-- Quick Action Buttons & Auth -->
       <div class="flex items-center gap-2">
+        <!-- Google Sign-In Button -->
+        <button id="btn-google-login" onclick="handleGoogleSignIn()" class="bg-white hover:bg-slate-100 text-slate-800 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm border border-slate-200 transition-all active:scale-95">
+          <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span class="hidden sm:inline">Google Login</span>
+          <span class="sm:hidden font-bold">Login</span>
+        </button>
+
+        <!-- Logged-in User Profile Dropdown Badge -->
+        <div id="userProfileBadge" class="hidden relative inline-block">
+          <button type="button" onclick="toggleUserDropdown()" class="flex items-center gap-1.5 sm:gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl transition-all">
+            <img id="userAvatarImg" src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" class="w-6 h-6 rounded-full border border-white/40 object-cover" alt="User">
+            <div class="text-left hidden sm:block leading-tight">
+              <span id="userDisplayName" class="text-xs font-bold block text-white truncate max-w-[90px]">User</span>
+              <span id="userRoleBadge" class="text-[9px] font-semibold text-emerald-300 uppercase tracking-wider">Owner</span>
+            </div>
+            <i class="fa-solid fa-chevron-down text-[10px] text-white/70 ml-0.5"></i>
+          </button>
+          <div id="userDropdownMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl py-2 z-50 text-slate-700 border border-slate-100 text-xs">
+            <div class="px-4 py-2 border-b border-slate-100">
+              <p id="userDropdownEmail" class="font-bold text-slate-800 truncate">user@gmail.com</p>
+              <span id="userDropdownRole" class="inline-block mt-0.5 px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px]">👑 Farm Owner</span>
+            </div>
+            <button id="btn-manage-access-menu" onclick="openAccessModal()" class="w-full text-left px-4 py-2 hover:bg-indigo-50 flex items-center gap-2 text-indigo-700 font-semibold">
+              <i class="fa-solid fa-user-shield text-indigo-600"></i> Manage Staff & Access
+            </button>
+            <button onclick="handleGoogleSignOut()" class="w-full text-left px-4 py-2 hover:bg-rose-50 flex items-center gap-2 text-rose-600 font-semibold">
+              <i class="fa-solid fa-arrow-right-from-bracket text-rose-500"></i> Sign Out
+            </button>
+          </div>
+        </div>
+
         <button onclick="openFirebaseModal()" id="btn-cloud-status" class="bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-300/30 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all">
           <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
           <span id="cloud-status-text" class="hidden sm:inline">Connect Firebase Cloud</span>
@@ -94,6 +131,9 @@
             <i class="fa-solid fa-ellipsis-vertical px-1"></i>
           </button>
           <div id="moreMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl py-2 z-50 text-slate-700 border border-slate-100 text-sm">
+            <button id="btn-more-manage-access" onclick="openAccessModal()" class="w-full text-left px-4 py-2 hover:bg-indigo-50 flex items-center gap-2.5 text-indigo-700 font-semibold">
+              <i class="fa-solid fa-user-shield text-indigo-600"></i> Manage Staff & Access
+            </button>
             <button onclick="openFirebaseModal()" class="w-full text-left px-4 py-2 hover:bg-amber-50 flex items-center gap-2.5 text-amber-700">
               <i class="fa-solid fa-cloud text-amber-500"></i> Firebase Cloud Settings
             </button>
@@ -863,6 +903,106 @@
     </div>
   </div>
 
+  <!-- 6. MANAGE STAFF & ACCESS CONTROL MODAL -->
+  <div id="accessModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-xl w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all modal-sheet-enter max-h-[94vh] sm:max-h-[92vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="bg-gradient-to-r from-indigo-700 via-indigo-800 to-purple-800 px-5 sm:px-6 py-3.5 text-white flex flex-col flex-shrink-0">
+        <div class="w-10 h-1 bg-white/40 rounded-full mx-auto mb-2 sm:hidden"></div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-sm shadow-inner">
+              <i class="fa-solid fa-user-shield text-indigo-300"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-base sm:text-lg leading-tight">Manage Staff & Access</h3>
+              <p class="text-[11px] text-indigo-200">Control who can log in with Google to record or view data</p>
+            </div>
+          </div>
+          <button onclick="closeAccessModal()" class="text-white/80 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <div class="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1 text-sm">
+        <!-- Add Staff Form -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+          <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-user-plus text-indigo-600"></i> Authorize New Team Member
+          </h4>
+          <form id="form-add-access-user" onsubmit="submitAddAuthorizedUser(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Google Email Address *</label>
+              <input type="email" id="access-user-email" required placeholder="e.g. staff.member@gmail.com" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Staff Member Name</label>
+                <input type="text" id="access-user-name" placeholder="e.g. Suresh Patel" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Role / Permissions *</label>
+                <select id="access-user-role" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="Staff">👤 Staff (Record Milk & Feed only)</option>
+                  <option value="Admin">🛡️ Admin (Full Financial & Delete Access)</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-900/20 flex items-center justify-center gap-2 transition-all active:scale-95">
+              <i class="fa-solid fa-check"></i> Authorize Google Account
+            </button>
+          </form>
+        </div>
+
+        <!-- Authorized Users List -->
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-users text-slate-500"></i> Authorized Staff & Owners
+            </h4>
+            <span id="access-user-count" class="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-0.5 rounded-full">0 Users</span>
+          </div>
+
+          <div id="authorized-users-list" class="space-y-2">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky bottom-0 bg-white pt-3 pb-3 px-5 border-t border-slate-100 flex justify-end">
+        <button type="button" onclick="closeAccessModal()" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. ACCESS DENIED / UNAUTHORIZED OVERLAY -->
+  <div id="unauthorizedModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[70] flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl border border-slate-100 space-y-4">
+      <div class="w-16 h-16 rounded-3xl bg-rose-100 text-rose-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
+        <i class="fa-solid fa-lock"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-black text-slate-900">Access Restricted</h3>
+        <p class="text-xs text-slate-500 mt-1">Your Google account is not yet authorized for GauDhan Dairy.</p>
+      </div>
+      <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-left flex items-center gap-3">
+        <img id="unauth-user-avatar" src="https://ui-avatars.com/api/?name=User" class="w-10 h-10 rounded-full border border-slate-300 object-cover" alt="Avatar">
+        <div class="truncate">
+          <p id="unauth-user-name" class="text-xs font-bold text-slate-800 truncate">User Name</p>
+          <p id="unauth-user-email" class="text-[11px] text-slate-500 truncate">user@gmail.com</p>
+        </div>
+      </div>
+      <p class="text-xs text-slate-600 bg-amber-50 p-3 rounded-xl border border-amber-200 text-amber-900 text-left">
+        <i class="fa-solid fa-circle-info text-amber-600 mr-1"></i>
+        Please ask the GauDhan Dairy Farm Owner to grant your email access in the <strong>"Manage Staff & Access"</strong> panel.
+      </p>
+      <div class="flex items-center gap-2 pt-2">
+        <button onclick="handleGoogleSignOut()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all shadow-md">
+          <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Switch / Sign Out Account
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification element -->
   <div id="toast" class="fixed bottom-20 md:bottom-6 right-4 sm:right-6 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-3 transform translate-y-28 opacity-0 transition-all duration-300">
     <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
@@ -896,7 +1036,7 @@
   </nav>
 
   <!-- Scripts -->
-  <script src="firebaseSync.js?v=7"></script>
-  <script src="app.js?v=7"></script>
+  <script src="firebaseSync.js?v=8"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

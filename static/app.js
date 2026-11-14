@@ -1494,3 +1494,158 @@ function showToast(msg, type = 'success') {
     toast.classList.add('translate-y-24', 'opacity-0');
   }, 3500);
 }
+
+// ----------------- GOOGLE AUTH & ACCESS MANAGEMENT ----------------- //
+
+async function handleGoogleSignIn() {
+  try {
+    showToast('Opening Google sign-in...', 'info');
+    const user = await firebaseManager.signInWithGoogle();
+    if (user) {
+      showToast(`Welcome, ${user.displayName || user.email}!`, 'success');
+      loadDashboard();
+      loadRecentTables();
+    }
+  } catch (err) {
+    console.error("Sign in error:", err);
+    showToast(err.message || 'Google sign-in was canceled or failed', 'error');
+  }
+}
+
+async function handleGoogleSignOut() {
+  try {
+    await firebaseManager.signOutGoogle();
+    document.getElementById('userDropdownMenu')?.classList.add('hidden');
+    showToast('Signed out successfully', 'info');
+  } catch (err) {
+    console.error("Sign out error:", err);
+  }
+}
+
+function toggleUserDropdown() {
+  const m = document.getElementById('userDropdownMenu');
+  if (m) m.classList.toggle('hidden');
+}
+
+document.addEventListener('click', (e) => {
+  const badge = document.getElementById('userProfileBadge');
+  if (badge && !badge.contains(e.target)) {
+    document.getElementById('userDropdownMenu')?.classList.add('hidden');
+  }
+});
+
+function openAccessModal() {
+  document.getElementById('userDropdownMenu')?.classList.add('hidden');
+  document.getElementById('moreMenu')?.classList.add('hidden');
+  document.getElementById('accessModal').classList.remove('hidden');
+  loadAuthorizedUsersList();
+}
+
+function closeAccessModal() {
+  document.getElementById('accessModal').classList.add('hidden');
+}
+
+async function loadAuthorizedUsersList() {
+  const container = document.getElementById('authorized-users-list');
+  const countEl = document.getElementById('access-user-count');
+  if (!container) return;
+
+  container.innerHTML = `<div class="py-4 text-center text-slate-400 text-xs">Loading authorized members...</div>`;
+
+  try {
+    const users = await firebaseManager.getAuthorizedUsers();
+    if (countEl) countEl.innerText = `${users.length} User${users.length === 1 ? '' : 's'}`;
+
+    if (!users || users.length === 0) {
+      container.innerHTML = `<div class="p-4 bg-slate-50 text-slate-400 rounded-xl text-center text-xs">No team members added yet. Add staff above to grant access!</div>`;
+      return;
+    }
+
+    const currentEmail = firebaseManager.currentUser ? firebaseManager.currentUser.email.toLowerCase() : '';
+    const isOwnerOrAdmin = firebaseManager.currentUserRole === 'Owner' || firebaseManager.currentUserRole === 'Admin';
+
+    container.innerHTML = users.map(u => {
+      const email = u.email || u.id;
+      const name = u.name || email.split('@')[0];
+      const role = u.role || 'Staff';
+      const isOwner = role === 'Owner';
+      const isSelf = email.toLowerCase() === currentEmail;
+
+      const roleBadge = isOwner 
+        ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">👑 Owner</span>`
+        : (role === 'Admin'
+            ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">🛡️ Admin</span>`
+            : `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">👤 Staff</span>`);
+
+      return `
+        <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700 uppercase flex-shrink-0">
+              ${name.charAt(0)}
+            </div>
+            <div class="truncate">
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-slate-800 text-xs truncate">${escapeHtml(name)}</span>
+                ${isSelf ? '<span class="text-[9px] bg-emerald-50 text-emerald-700 px-1 rounded font-semibold">You</span>' : ''}
+              </div>
+              <span class="text-[11px] text-slate-500 block truncate">${escapeHtml(email)}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            ${roleBadge}
+            ${(!isOwner && isOwnerOrAdmin && !isSelf) ? `
+              <button onclick="handleDeleteAuthorizedUser('${email}')" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs transition-colors" title="Revoke Access">
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error("Failed to load users:", err);
+    container.innerHTML = `<div class="p-4 text-center text-rose-500 text-xs">Error loading users.</div>`;
+  }
+}
+
+async function submitAddAuthorizedUser(e) {
+  e.preventDefault();
+  const emailInput = document.getElementById('access-user-email');
+  const nameInput = document.getElementById('access-user-name');
+  const roleSelect = document.getElementById('access-user-role');
+
+  const email = emailInput.value.trim().toLowerCase();
+  const name = nameInput.value.trim();
+  const role = roleSelect.value;
+
+  if (!email) {
+    showToast('Please enter a valid Google email', 'error');
+    return;
+  }
+
+  try {
+    await firebaseManager.addAuthorizedUser(email, name, role);
+    emailInput.value = '';
+    nameInput.value = '';
+    showToast(`Access granted to ${email} as ${role}!`, 'success');
+    loadAuthorizedUsersList();
+  } catch (err) {
+    console.error("Error adding user:", err);
+    showToast(err.message || 'Failed to authorize user', 'error');
+  }
+}
+
+async function handleDeleteAuthorizedUser(email) {
+  if (!confirm(`Are you sure you want to revoke access for ${email}?`)) {
+    return;
+  }
+
+  try {
+    await firebaseManager.removeAuthorizedUser(email);
+    showToast(`Access revoked for ${email}`, 'info');
+    loadAuthorizedUsersList();
+  } catch (err) {
+    console.error("Error removing user:", err);
+    showToast(err.message || 'Failed to remove user', 'error');
+  }
+}
