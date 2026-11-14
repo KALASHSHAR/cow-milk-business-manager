@@ -40,6 +40,20 @@ const firebaseManager = {
         console.warn("Auto-connect to Firebase failed, falling back to local mode", err);
       }
     }
+
+    // Restore saved direct session if available
+    const savedUser = localStorage.getItem('gaudhan_active_user');
+    if (savedUser) {
+      try {
+        const u = JSON.parse(savedUser);
+        if (u && u.email) {
+          this.currentUser = { email: u.email, displayName: u.name, photoURL: u.photoURL || '' };
+          this.currentUserRole = u.role || 'Owner';
+          this.updateAuthUI(this.currentUser, this.currentUserRole);
+        }
+      } catch (e) {}
+    }
+
     this.updateUI();
   },
 
@@ -88,6 +102,19 @@ const firebaseManager = {
           this.updateAuthUI(user, 'Staff');
         }
       } else {
+        // If no firebase auth user, check if we have a direct login saved
+        const savedUser = localStorage.getItem('gaudhan_active_user');
+        if (savedUser) {
+          try {
+            const u = JSON.parse(savedUser);
+            if (u && u.email) {
+              this.currentUser = { email: u.email, displayName: u.name, photoURL: u.photoURL || '' };
+              this.currentUserRole = u.role || 'Owner';
+              this.updateAuthUI(this.currentUser, this.currentUserRole);
+              return;
+            }
+          } catch(e) {}
+        }
         this.currentUser = null;
         this.currentUserRole = null;
         this.updateAuthUI(null, null);
@@ -155,29 +182,75 @@ const firebaseManager = {
     if (!this.auth) {
       if (DEFAULT_FIREBASE_CONFIG) this.connect(DEFAULT_FIREBASE_CONFIG);
     }
-    if (!this.auth) throw new Error("Firebase Auth is not available.");
+    if (!this.auth) throw new Error("Firebase Auth is not available. Please check internet connection.");
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
     try {
       const res = await this.auth.signInWithPopup(provider);
-      return res.user;
+      if (res && res.user) {
+        localStorage.removeItem('gaudhan_active_user');
+        return res.user;
+      }
+      return null;
     } catch (err) {
-      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-        await this.auth.signInWithRedirect(provider);
+      console.warn("Google sign-in popup error:", err);
+      if (err.code === 'auth/unauthorized-domain') {
+        throw new Error(`Domain/IP '${window.location.hostname}' is not authorized in Firebase Console -> Authentication -> Settings -> Authorized Domains. Add it there, or use Quick Farm Login below!`);
+      } else if (err.code === 'auth/operation-not-allowed') {
+        throw new Error("Google Sign-In is not enabled yet in your Firebase project. Go to Firebase Console -> Authentication -> Sign-in method -> Enable Google, or use Quick Farm Login below!");
+      } else if (err.code === 'auth/popup-blocked') {
+        throw new Error("Browser popup was blocked. Please allow popups for this site, or use Quick Farm Login below.");
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        throw new Error("Sign-in window was closed before completing.");
       } else {
-        throw err;
+        throw new Error(err.message || "Google sign-in failed. You can sign in using Quick Farm Login below.");
       }
     }
   },
 
+  async signInDirect(email, name = '', role = null) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim() || cleanEmail.split('@')[0];
+
+    let assignedRole = role;
+    if (!assignedRole) {
+      const access = await this.verifyUserAccess({ email: cleanEmail, displayName: cleanName, photoURL: '' });
+      assignedRole = access.role;
+    }
+
+    const photoURL = `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanName)}&background=0D8ABC&color=fff`;
+    const userObj = {
+      email: cleanEmail,
+      displayName: cleanName,
+      photoURL: photoURL
+    };
+
+    this.currentUser = userObj;
+    this.currentUserRole = assignedRole;
+    localStorage.setItem('gaudhan_active_user', JSON.stringify({ email: cleanEmail, name: cleanName, role: assignedRole, photoURL }));
+    
+    // Sync to SQLite
+    try {
+      await fetch('/api/access/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, name: cleanName, role: assignedRole, photo_url: photoURL, added_by: 'Self' })
+      });
+    } catch(e) {}
+
+    this.updateAuthUI(userObj, assignedRole);
+    return userObj;
+  },
+
   async signOutGoogle() {
     if (this.auth) {
-      await this.auth.signOut();
+      try { await this.auth.signOut(); } catch (e) {}
     }
     this.currentUser = null;
     this.currentUserRole = null;
+    localStorage.removeItem('gaudhan_active_user');
     this.updateAuthUI(null, null);
   },
 

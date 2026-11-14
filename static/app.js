@@ -1497,17 +1497,75 @@ function showToast(msg, type = 'success') {
 
 // ----------------- GOOGLE AUTH & ACCESS MANAGEMENT ----------------- //
 
+function openLoginModal() {
+  const errBanner = document.getElementById('loginErrorBanner');
+  if (errBanner) errBanner.classList.add('hidden');
+  document.getElementById('loginModal').classList.remove('hidden');
+}
+
+function closeLoginModal() {
+  document.getElementById('loginModal').classList.add('hidden');
+}
+
+let quickLoginSelectedRole = 'Owner';
+
+function setQuickLoginRole(role) {
+  quickLoginSelectedRole = role;
+  const emailInput = document.getElementById('quick-login-email');
+  const nameInput = document.getElementById('quick-login-name');
+  if (role === 'Owner') {
+    if (!emailInput.value) emailInput.value = 'owner@gaudhan.com';
+    if (!nameInput.value) nameInput.value = 'Farm Owner';
+    showToast('Role selected: 👑 Farm Owner', 'info');
+  } else {
+    if (!emailInput.value) emailInput.value = 'staff@gaudhan.com';
+    if (!nameInput.value) nameInput.value = 'Dairy Staff';
+    showToast('Role selected: 👤 Staff Member', 'info');
+  }
+}
+
+async function submitQuickLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('quick-login-email').value.trim();
+  const name = document.getElementById('quick-login-name').value.trim();
+
+  if (!email) {
+    showToast('Please enter your email', 'error');
+    return;
+  }
+
+  try {
+    const user = await firebaseManager.signInDirect(email, name, quickLoginSelectedRole);
+    closeLoginModal();
+    showToast(`Signed in as ${user.displayName || user.email} (${quickLoginSelectedRole})!`, 'success');
+    loadDashboard();
+    loadRecentTables();
+  } catch (err) {
+    console.error("Direct sign in error:", err);
+    showToast(err.message || 'Failed to sign in', 'error');
+  }
+}
+
 async function handleGoogleSignIn() {
+  const errBanner = document.getElementById('loginErrorBanner');
+  const errText = document.getElementById('loginErrorText');
+  if (errBanner) errBanner.classList.add('hidden');
+
   try {
     showToast('Opening Google sign-in...', 'info');
     const user = await firebaseManager.signInWithGoogle();
     if (user) {
+      closeLoginModal();
       showToast(`Welcome, ${user.displayName || user.email}!`, 'success');
       loadDashboard();
       loadRecentTables();
     }
   } catch (err) {
     console.error("Sign in error:", err);
+    if (errBanner && errText) {
+      errText.innerText = err.message;
+      errBanner.classList.remove('hidden');
+    }
     showToast(err.message || 'Google sign-in was canceled or failed', 'error');
   }
 }

@@ -69,7 +69,7 @@
       <!-- Quick Action Buttons & Auth -->
       <div class="flex items-center gap-2">
         <!-- Google Sign-In Button -->
-        <button id="btn-google-login" onclick="handleGoogleSignIn()" class="bg-white hover:bg-slate-100 text-slate-800 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm border border-slate-200 transition-all active:scale-95">
+        <button id="btn-google-login" onclick="openLoginModal()" class="bg-white hover:bg-slate-100 text-slate-800 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm border border-slate-200 transition-all active:scale-95">
           <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -1003,6 +1003,91 @@
     </div>
   </div>
 
+  <!-- 8. USER LOGIN MODAL (Google Auth + Direct Farm Access) -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all modal-sheet-enter max-h-[94vh] sm:max-h-[90vh] flex flex-col">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900 px-6 py-4 text-white flex flex-col flex-shrink-0">
+        <div class="w-10 h-1 bg-white/40 rounded-full mx-auto mb-2 sm:hidden"></div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-lg text-emerald-300">
+              <i class="fa-solid fa-cow"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-base sm:text-lg leading-tight">Sign in to GauDhan Dairy</h3>
+              <p class="text-[11px] text-emerald-200">Owner & Staff Authentication</p>
+            </div>
+          </div>
+          <button onclick="closeLoginModal()" class="text-white/80 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-sm">
+        <!-- Error Banner if Firebase Google Auth has issue -->
+        <div id="loginErrorBanner" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+          <div class="flex items-start gap-2">
+            <i class="fa-solid fa-circle-exclamation text-rose-600 mt-0.5"></i>
+            <div class="flex-1">
+              <p id="loginErrorText" class="font-medium leading-relaxed"></p>
+              <p class="mt-1 text-[11px] text-rose-600 font-semibold">You can also use the Instant Farm Login below to sign in directly!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. Google One-Tap Sign In -->
+        <div class="space-y-2">
+          <button type="button" id="btn-modal-google-signin" onclick="handleGoogleSignIn()" class="w-full py-3 px-4 bg-white hover:bg-slate-50 active:scale-98 text-slate-800 border-2 border-slate-200 hover:border-slate-300 rounded-2xl font-bold text-sm shadow-sm flex items-center justify-center gap-3 transition-all">
+            <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span>Continue with Google Account</span>
+          </button>
+          <p class="text-[11px] text-center text-slate-400">Authenticates with your Google profile via Firebase Cloud</p>
+        </div>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-200"></div>
+          <span class="flex-shrink mx-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Or Quick Farm Sign-In</span>
+          <div class="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <!-- 2. Direct Instant Farm Login -->
+        <form id="form-quick-login" onsubmit="submitQuickLogin(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Your Email Address *</label>
+            <input type="email" id="quick-login-email" required placeholder="e.g. farm.owner@gmail.com" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Your Name</label>
+            <input type="text" id="quick-login-name" placeholder="e.g. Kalash" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+
+          <!-- Quick Fill Buttons -->
+          <div class="flex items-center gap-2 pt-1">
+            <button type="button" onclick="setQuickLoginRole('Owner')" class="flex-1 py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold text-center transition-all">
+              👑 Quick Owner
+            </button>
+            <button type="button" onclick="setQuickLoginRole('Staff')" class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold text-center transition-all">
+              👤 Quick Staff
+            </button>
+          </div>
+
+          <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950/20 flex items-center justify-center gap-2 transition-all active:scale-95">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In to GauDhan Dairy
+          </button>
+        </form>
+      </div>
+
+      <div class="sticky bottom-0 bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-end">
+        <button type="button" onclick="closeLoginModal()" class="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification element -->
   <div id="toast" class="fixed bottom-20 md:bottom-6 right-4 sm:right-6 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-3 transform translate-y-28 opacity-0 transition-all duration-300">
     <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
@@ -1036,7 +1121,7 @@
   </nav>
 
   <!-- Scripts -->
-  <script src="firebaseSync.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="firebaseSync.js?v=9"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
