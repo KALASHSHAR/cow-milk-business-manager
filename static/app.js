@@ -1,0 +1,880 @@
+// State management
+let currentViewLevel = 'monthly';
+let financialChart = null;
+let donutChart = null;
+let activeTableTab = 'milk';
+
+const operationalCategories = [
+  'Veterinary & Medicine',
+  'Labor & Wages',
+  'Electricity & Water',
+  'Transport & Fuel',
+  'Cleaning & Sanitization',
+  'Repairs & Maintenance',
+  'Miscellaneous Farm Expense'
+];
+
+const capitalCategories = [
+  'Cattle Purchase (Cows/Calves)',
+  'Shed & Infrastructure',
+  'Machinery & Equipment',
+  'Borewell & Water System',
+  'Milk Cooler & Tank',
+  'Other Long-term Investment'
+];
+
+// Initialize on DOM load
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+  const monthStr = `${yyyy}-${mm}`;
+
+  // Pre-fill inputs
+  document.getElementById('input-daily-date').value = todayStr;
+  document.getElementById('input-monthly-date').value = monthStr;
+  document.getElementById('select-year').value = String(yyyy);
+  
+  // Custom date defaults (last 30 days)
+  const past30 = new Date(today);
+  past30.setDate(today.getDate() - 30);
+  const past30Str = `${past30.getFullYear()}-${String(past30.getMonth() + 1).padStart(2, '0')}-${String(past30.getDate()).padStart(2, '0')}`;
+  document.getElementById('input-custom-start').value = past30Str;
+  document.getElementById('input-custom-end').value = todayStr;
+
+  // Form dates
+  document.getElementById('milk-date').value = todayStr;
+  document.getElementById('feed-date').value = todayStr;
+  document.getElementById('expense-date').value = todayStr;
+
+  // Init category dropdown
+  updateCategoryOptions();
+
+  // Load Dashboard & Data
+  loadDashboard();
+  loadRecentTables();
+});
+
+// View Level Switcher (daily, monthly, yearly, custom)
+function setViewLevel(level) {
+  currentViewLevel = level;
+  const tabs = ['daily', 'monthly', 'yearly', 'custom'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`btn-tab-${t}`);
+    const filter = document.getElementById(`filter-${t}`);
+    if (t === level) {
+      btn.className = 'px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-white text-emerald-700 shadow-sm';
+      filter.classList.remove('hidden');
+    } else {
+      btn.className = 'px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900';
+      filter.classList.add('hidden');
+    }
+  });
+
+  loadDashboard();
+}
+
+// Navigation helpers
+function changeDay(delta) {
+  const input = document.getElementById('input-daily-date');
+  const d = new Date(input.value || new Date());
+  d.setDate(d.getDate() + delta);
+  input.value = d.toISOString().split('T')[0];
+  loadDashboard();
+}
+
+function setToday() {
+  const todayStr = new Date().toISOString().split('T')[0];
+  document.getElementById('input-daily-date').value = todayStr;
+  loadDashboard();
+}
+
+function changeMonth(delta) {
+  const input = document.getElementById('input-monthly-date');
+  let [year, month] = input.value.split('-').map(Number);
+  month += delta;
+  if (month < 1) { month = 12; year--; }
+  if (month > 12) { month = 1; year++; }
+  input.value = `${year}-${String(month).padStart(2, '0')}`;
+  loadDashboard();
+}
+
+function setCurrentMonth() {
+  const today = new Date();
+  document.getElementById('input-monthly-date').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  loadDashboard();
+}
+
+function changeYear(delta) {
+  const select = document.getElementById('select-year');
+  let y = parseInt(select.value, 10) + delta;
+  let opt = select.querySelector(`option[value="${y}"]`);
+  if (!opt) {
+    opt = document.createElement('option');
+    opt.value = y;
+    opt.innerText = y;
+    select.appendChild(opt);
+  }
+  select.value = y;
+  loadDashboard();
+}
+
+// Fetch and render Dashboard
+async function loadDashboard() {
+  let url = `/api/dashboard?level=${currentViewLevel}`;
+
+  if (currentViewLevel === 'daily') {
+    url += `&target_date=${document.getElementById('input-daily-date').value}`;
+  } else if (currentViewLevel === 'monthly') {
+    url += `&target_date=${document.getElementById('input-monthly-date').value}`;
+  } else if (currentViewLevel === 'yearly') {
+    url += `&target_date=${document.getElementById('select-year').value}`;
+  } else if (currentViewLevel === 'custom') {
+    url += `&start_date=${document.getElementById('input-custom-start').value}&end_date=${document.getElementById('input-custom-end').value}`;
+  }
+
+  try {
+    const res = await fetch(url);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+
+    const d = result.data;
+    renderMetrics(d);
+    renderFinancialChart(d.chart_data);
+    renderDonutChart(d.category_breakdown);
+    document.getElementById('period-badge').innerText = d.period_label;
+  } catch (err) {
+    console.error('Error fetching dashboard:', err);
+    showToast('Failed to load dashboard data', 'error');
+  }
+}
+
+function renderMetrics(d) {
+  document.getElementById('card-revenue').innerText = `₹${formatNumber(d.revenue)}`;
+  document.getElementById('card-liters').innerText = `${d.total_liters} L`;
+  document.getElementById('card-avg-price').innerText = `₹${d.avg_price_per_liter}/L`;
+
+  document.getElementById('card-opex').innerText = `₹${formatNumber(d.operational_expenses)}`;
+  document.getElementById('card-feed-cost').innerText = `₹${formatNumber(d.feed_expense)}`;
+  document.getElementById('card-feed-per-l').innerText = `₹${d.feed_cost_per_liter}/L`;
+
+  document.getElementById('card-investment').innerText = `₹${formatNumber(d.capital_investment)}`;
+
+  const profitEl = document.getElementById('card-profit');
+  const iconBox = document.getElementById('card-profit-icon-box');
+  const icon = document.getElementById('card-profit-icon');
+
+  if (d.net_profit >= 0) {
+    profitEl.innerText = `+₹${formatNumber(d.net_profit)}`;
+    profitEl.className = 'text-2xl font-black mt-1 text-emerald-600';
+    iconBox.className = 'w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center text-xl shadow-sm';
+    icon.className = 'fa-solid fa-arrow-trend-up';
+  } else {
+    profitEl.innerText = `-₹${formatNumber(Math.abs(d.net_profit))}`;
+    profitEl.className = 'text-2xl font-black mt-1 text-rose-600';
+    iconBox.className = 'w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center text-xl shadow-sm';
+    icon.className = 'fa-solid fa-arrow-trend-down';
+  }
+
+  document.getElementById('card-profit-margin').innerText = `${d.profit_margin_pct}%`;
+  document.getElementById('card-avg-fat').innerText = d.avg_fat !== null ? `${d.avg_fat}%` : 'N/A';
+}
+
+function renderFinancialChart(chartData) {
+  const ctx = document.getElementById('financialTrendChart').getContext('2d');
+  
+  if (financialChart) {
+    financialChart.destroy();
+  }
+
+  // Calculate Net Profit series
+  const netProfits = chartData.revenues.map((rev, i) => {
+    return Math.round((rev - chartData.operational_expenses[i]) * 100) / 100;
+  });
+
+  financialChart = new Chart(ctx, {
+    data: {
+      labels: chartData.labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Milk Revenue (₹)',
+          data: chartData.revenues,
+          backgroundColor: 'rgba(34, 197, 94, 0.85)',
+          borderRadius: 6,
+          order: 2
+        },
+        {
+          type: 'bar',
+          label: 'Operational Expenses (₹)',
+          data: chartData.operational_expenses,
+          backgroundColor: 'rgba(239, 68, 68, 0.85)',
+          borderRadius: 6,
+          order: 3
+        },
+        {
+          type: 'bar',
+          label: 'Capital Investment (₹)',
+          data: chartData.investments,
+          backgroundColor: 'rgba(59, 130, 246, 0.75)',
+          borderRadius: 6,
+          order: 4
+        },
+        {
+          type: 'line',
+          label: 'Net Profit (₹)',
+          data: netProfits,
+          borderColor: '#10b981',
+          borderWidth: 2.5,
+          pointBackgroundColor: '#047857',
+          pointRadius: 4,
+          tension: 0.3,
+          yAxisID: 'y',
+          order: 1
+        },
+        {
+          type: 'line',
+          label: 'Milk Liters (L)',
+          data: chartData.liters,
+          borderColor: '#8b5cf6',
+          borderWidth: 2,
+          borderDash: [4, 4],
+          pointRadius: 3,
+          pointBackgroundColor: '#7c3aed',
+          tension: 0.3,
+          yAxisID: 'y1',
+          order: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            boxWidth: 12,
+            font: { size: 11, family: "'Plus Jakarta Sans', sans-serif", weight: '600' }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.dataset.label || '';
+              const val = context.parsed.y;
+              if (label.includes('Liters')) {
+                return `${label}: ${val} L`;
+              }
+              return `${label}: ₹${formatNumber(val)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 } }
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          grid: { color: '#f1f5f9' },
+          ticks: {
+            font: { size: 10 },
+            callback: (v) => '₹' + (v >= 1000 ? (v / 1000) + 'k' : v)
+          }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: {
+            font: { size: 10 },
+            callback: (v) => v + ' L'
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderDonutChart(categories) {
+  const ctx = document.getElementById('expenseDonutChart').getContext('2d');
+  const summaryEl = document.getElementById('expense-legend-summary');
+
+  if (donutChart) {
+    donutChart.destroy();
+  }
+
+  if (!categories || categories.length === 0) {
+    summaryEl.innerHTML = `<p class="text-center text-slate-400 py-4">No expenses recorded for this period</p>`;
+    donutChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['No Data'],
+        datasets: [{ data: [1], backgroundColor: ['#e2e8f0'] }]
+      },
+      options: { cutout: '75%', plugins: { legend: { display: false } } }
+    });
+    return;
+  }
+
+  const palette = [
+    '#f59e0b', // Feed (amber)
+    '#ef4444', // Vet (red)
+    '#8b5cf6', // Labor (purple)
+    '#3b82f6', // Cattle purchase (blue)
+    '#06b6d4', // Utilities (cyan)
+    '#ec4899', // Transport (pink)
+    '#10b981', // Infrastructure (emerald)
+    '#64748b'  // Misc (slate)
+  ];
+
+  const labels = categories.map(c => c.category);
+  const data = categories.map(c => c.total);
+  const colors = categories.map((_, i) => palette[i % palette.length]);
+
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: colors,
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.label}: ₹${formatNumber(ctx.parsed)}`
+          }
+        }
+      }
+    }
+  });
+
+  // Render bottom list
+  const total = data.reduce((a, b) => a + b, 0);
+  summaryEl.innerHTML = categories.map((cat, i) => {
+    const pct = total > 0 ? Math.round((cat.total / total) * 100) : 0;
+    const color = palette[i % palette.length];
+    return `
+      <div class="flex items-center justify-between py-0.5">
+        <span class="flex items-center gap-1.5 truncate">
+          <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${color}"></span>
+          <span class="text-slate-700 font-medium">${cat.category}</span>
+        </span>
+        <span class="font-bold text-slate-800">₹${formatNumber(cat.total)} <span class="text-[10px] text-slate-400 font-normal">(${pct}%)</span></span>
+      </div>
+    `;
+  }).join('');
+}
+
+// ----------------- TABLES & TABS ----------------- //
+
+function switchTableTab(tab) {
+  activeTableTab = tab;
+  ['milk', 'feed', 'expenses'].forEach(t => {
+    const btn = document.getElementById(`tab-btn-${t}`);
+    const content = document.getElementById(`table-content-${t}`);
+    if (t === tab) {
+      btn.className = 'px-4 py-2.5 font-bold text-sm border-b-2 border-emerald-600 text-emerald-800 transition-all flex items-center gap-2';
+      content.classList.remove('hidden');
+    } else {
+      btn.className = 'px-4 py-2.5 font-bold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all flex items-center gap-2';
+      content.classList.add('hidden');
+    }
+  });
+}
+
+async function loadRecentTables() {
+  loadMilkTable();
+  loadFeedTable();
+  loadExpensesTable();
+}
+
+async function loadMilkTable() {
+  try {
+    const res = await fetch('/api/milk?limit=50');
+    const data = await res.json();
+    const tbody = document.getElementById('milk-table-body');
+    if (!data.records || data.records.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">No milk sales logged yet. Click "+ Add Daily Milk" to record sales!</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.records.map(r => `
+      <tr class="hover:bg-slate-50/70 transition-colors">
+        <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
+        <td class="py-3 px-4">
+          <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${r.shift === 'Morning' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}">
+            ${r.shift}
+          </span>
+        </td>
+        <td class="py-3 px-4 font-bold text-slate-900">${r.quantity_liters} L</td>
+        <td class="py-3 px-4 text-slate-600">₹${r.price_per_liter}</td>
+        <td class="py-3 px-4 font-semibold ${r.fat_percentage ? 'text-emerald-700' : 'text-slate-400'}">${r.fat_percentage ? r.fat_percentage + '%' : '--'}</td>
+        <td class="py-3 px-4 font-black text-emerald-600">₹${formatNumber(r.total_amount)}</td>
+        <td class="py-3 px-4 font-medium text-slate-700">${escapeHtml(r.buyer_name || '-')}</td>
+        <td class="py-3 px-4">
+          ${r.receipt_image ? `
+            <button onclick="openReceiptModal('/uploads/${r.receipt_image}', 'Milk Slip - ${r.date} (${r.shift})')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold border border-emerald-200 transition-all">
+              <i class="fa-solid fa-receipt text-emerald-600"></i> View Slip
+            </button>
+          ` : `<span class="text-xs text-slate-300">--</span>`}
+        </td>
+        <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(r.notes || '')}</td>
+        <td class="py-3 px-4 text-right">
+          <button onclick="deleteMilkSale(${r.id})" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function loadFeedTable() {
+  try {
+    const res = await fetch('/api/feed?limit=50');
+    const data = await res.json();
+    const tbody = document.getElementById('feed-table-body');
+    if (!data.records || data.records.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-slate-400">No feed purchases logged yet. Click "+ Add Cow Feed" to track feed costs!</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.records.map(r => `
+      <tr class="hover:bg-slate-50/70 transition-colors">
+        <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
+        <td class="py-3 px-4">
+          <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+            ${escapeHtml(r.feed_type)}
+          </span>
+        </td>
+        <td class="py-3 px-4 font-bold text-slate-900">${escapeHtml(r.item_name)}</td>
+        <td class="py-3 px-4 text-slate-700">${r.quantity_kg ? r.quantity_kg + ' kg' : '--'}</td>
+        <td class="py-3 px-4 font-black text-rose-600">₹${formatNumber(r.cost)}</td>
+        <td class="py-3 px-4 text-slate-600">${escapeHtml(r.supplier || '-')}</td>
+        <td class="py-3 px-4">
+          ${r.receipt_image ? `
+            <button onclick="openReceiptModal('/uploads/${r.receipt_image}', 'Feed Invoice - ${escapeHtml(r.item_name)}')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-semibold border border-amber-200 transition-all">
+              <i class="fa-solid fa-receipt text-amber-600"></i> View Bill
+            </button>
+          ` : `<span class="text-xs text-slate-300">--</span>`}
+        </td>
+        <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(r.notes || '')}</td>
+        <td class="py-3 px-4 text-right">
+          <button onclick="deleteFeedPurchase(${r.id})" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function loadExpensesTable() {
+  try {
+    const res = await fetch('/api/expenses?limit=50');
+    const data = await res.json();
+    const tbody = document.getElementById('expenses-table-body');
+    if (!data.records || data.records.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">No expenses logged yet. Click "+ Add Expense" to record costs or investments!</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.records.map(r => `
+      <tr class="hover:bg-slate-50/70 transition-colors">
+        <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
+        <td class="py-3 px-4">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${r.type === 'Capital Investment' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-100 text-slate-700'}">
+            ${r.type}
+          </span>
+        </td>
+        <td class="py-3 px-4 font-semibold text-slate-800">${escapeHtml(r.category)}</td>
+        <td class="py-3 px-4 text-slate-600 max-w-xs truncate">${escapeHtml(r.description)}</td>
+        <td class="py-3 px-4 font-black ${r.type === 'Capital Investment' ? 'text-blue-600' : 'text-rose-600'}">₹${formatNumber(r.amount)}</td>
+        <td class="py-3 px-4 text-xs font-medium text-slate-500">${escapeHtml(r.payment_mode || 'Cash')}</td>
+        <td class="py-3 px-4">
+          ${r.receipt_image ? `
+            <button onclick="openReceiptModal('/uploads/${r.receipt_image}', 'Receipt - ${escapeHtml(r.description)}')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition-all">
+              <i class="fa-solid fa-receipt text-slate-600"></i> View Slip
+            </button>
+          ` : `<span class="text-xs text-slate-300">--</span>`}
+        </td>
+        <td class="py-3 px-4 text-right">
+          <button onclick="deleteExpense(${r.id})" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function filterCurrentTable() {
+  const query = document.getElementById('tableSearch').value.toLowerCase();
+  let tableId = 'milk-table-body';
+  if (activeTableTab === 'feed') tableId = 'feed-table-body';
+  if (activeTableTab === 'expenses') tableId = 'expenses-table-body';
+
+  const rows = document.getElementById(tableId).getElementsByTagName('tr');
+  for (let r of rows) {
+    const text = r.innerText.toLowerCase();
+    r.style.display = text.includes(query) ? '' : 'none';
+  }
+}
+
+// ----------------- MODAL CONTROLS ----------------- //
+
+function openMilkModal() {
+  document.getElementById('milkModal').classList.remove('hidden');
+  calculateMilkTotal();
+}
+function closeMilkModal() {
+  document.getElementById('milkModal').classList.add('hidden');
+}
+
+function calculateMilkTotal() {
+  const qty = parseFloat(document.getElementById('milk-quantity').value) || 0;
+  const price = parseFloat(document.getElementById('milk-price').value) || 0;
+  const total = (qty * price).toFixed(2);
+  document.getElementById('milk-calculated-total').innerText = `₹${formatNumber(total)}`;
+}
+
+function openFeedModal() {
+  document.getElementById('feedModal').classList.remove('hidden');
+}
+function closeFeedModal() {
+  document.getElementById('feedModal').classList.add('hidden');
+}
+
+function openExpenseModal() {
+  document.getElementById('expenseModal').classList.remove('hidden');
+}
+function closeExpenseModal() {
+  document.getElementById('expenseModal').classList.add('hidden');
+}
+
+function updateCategoryOptions() {
+  const nature = document.querySelector('input[name="expense_nature"]:checked').value;
+  const select = document.getElementById('expense-category');
+  select.innerHTML = '';
+  const list = nature === 'Operational' ? operationalCategories : capitalCategories;
+  list.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.innerText = cat;
+    select.appendChild(opt);
+  });
+}
+
+function toggleMoreMenu() {
+  const m = document.getElementById('moreMenu');
+  m.classList.toggle('hidden');
+}
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('moreActionsDropdown');
+  if (dropdown && !dropdown.contains(e.target)) {
+    document.getElementById('moreMenu')?.classList.add('hidden');
+  }
+});
+
+// ----------------- RECEIPT UPLOADS & PREVIEW ----------------- //
+
+function previewSelectedReceipt(e, previewBoxId, imgId) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      document.getElementById(imgId).src = evt.target.result;
+      document.getElementById(previewBoxId).classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function clearReceiptInput(inputId, previewBoxId) {
+  document.getElementById(inputId).value = '';
+  document.getElementById(previewBoxId).classList.add('hidden');
+}
+
+async function uploadReceiptFile(fileInputId) {
+  const fileInput = document.getElementById(fileInputId);
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    return null;
+  }
+  const formData = new FormData();
+  formData.append('receipt', fileInput.files[0]);
+
+  try {
+    const res = await fetch('/api/upload-receipt', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      return data.filename;
+    } else {
+      console.warn('Receipt upload error:', data.error);
+      return null;
+    }
+  } catch (err) {
+    console.error('Failed to upload receipt image:', err);
+    return null;
+  }
+}
+
+function openReceiptModal(url, title = 'Transaction Receipt') {
+  document.getElementById('receiptModalTitle').innerText = title;
+  document.getElementById('receiptModalImg').src = url;
+  document.getElementById('receiptDownloadBtn').href = url;
+  document.getElementById('receiptModal').classList.remove('hidden');
+}
+
+function closeReceiptModal() {
+  document.getElementById('receiptModal').classList.add('hidden');
+}
+
+// ----------------- SUBMISSIONS ----------------- //
+
+async function submitMilkSale(e) {
+  e.preventDefault();
+  
+  // Upload receipt image if provided
+  let receiptFilename = await uploadReceiptFile('milk-receipt-file');
+
+  const payload = {
+    date: document.getElementById('milk-date').value,
+    shift: document.getElementById('milk-shift').value,
+    quantity_liters: parseFloat(document.getElementById('milk-quantity').value),
+    price_per_liter: parseFloat(document.getElementById('milk-price').value),
+    fat_percentage: document.getElementById('milk-fat').value ? parseFloat(document.getElementById('milk-fat').value) : null,
+    snf_percentage: document.getElementById('milk-snf').value ? parseFloat(document.getElementById('milk-snf').value) : null,
+    buyer_name: document.getElementById('milk-buyer').value || 'Local Dairy',
+    notes: document.getElementById('milk-notes').value,
+    receipt_image: receiptFilename
+  };
+
+  try {
+    const res = await fetch('/api/milk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+
+    showToast('Milk sale recorded with receipt!', 'success');
+    closeMilkModal();
+    document.getElementById('milk-quantity').value = '';
+    clearReceiptInput('milk-receipt-file', 'milk-receipt-preview');
+    loadDashboard();
+    loadMilkTable();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitFeedPurchase(e) {
+  e.preventDefault();
+
+  // Upload receipt image if provided
+  let receiptFilename = await uploadReceiptFile('feed-receipt-file');
+
+  const payload = {
+    date: document.getElementById('feed-date').value,
+    feed_type: document.getElementById('feed-type').value,
+    item_name: document.getElementById('feed-item').value,
+    quantity_kg: parseFloat(document.getElementById('feed-quantity').value) || 0,
+    cost: parseFloat(document.getElementById('feed-cost').value),
+    supplier: document.getElementById('feed-supplier').value,
+    payment_mode: document.getElementById('feed-payment').value,
+    notes: document.getElementById('feed-notes').value,
+    receipt_image: receiptFilename
+  };
+
+  try {
+    const res = await fetch('/api/feed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+
+    showToast('Cow feed purchase & receipt saved!', 'success');
+    closeFeedModal();
+    document.getElementById('feed-item').value = '';
+    document.getElementById('feed-cost').value = '';
+    document.getElementById('feed-quantity').value = '';
+    clearReceiptInput('feed-receipt-file', 'feed-receipt-preview');
+    loadDashboard();
+    loadFeedTable();
+    loadExpensesTable();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitExpense(e) {
+  e.preventDefault();
+
+  // Upload receipt image if provided
+  let receiptFilename = await uploadReceiptFile('expense-receipt-file');
+
+  const payload = {
+    type: document.querySelector('input[name="expense_nature"]:checked').value,
+    category: document.getElementById('expense-category').value,
+    date: document.getElementById('expense-date').value,
+    description: document.getElementById('expense-description').value,
+    amount: parseFloat(document.getElementById('expense-amount').value),
+    payment_mode: document.getElementById('expense-payment').value,
+    receipt_image: receiptFilename
+  };
+
+  try {
+    const res = await fetch('/api/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+
+    showToast('Expense / Investment & receipt recorded!', 'success');
+    closeExpenseModal();
+    document.getElementById('expense-description').value = '';
+    document.getElementById('expense-amount').value = '';
+    clearReceiptInput('expense-receipt-file', 'expense-receipt-preview');
+    loadDashboard();
+    loadExpensesTable();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ----------------- DELETIONS ----------------- //
+
+async function deleteMilkSale(id) {
+  if (!confirm('Are you sure you want to delete this milk record?')) return;
+  try {
+    await fetch(`/api/milk/${id}`, { method: 'DELETE' });
+    showToast('Milk record removed', 'success');
+    loadDashboard();
+    loadMilkTable();
+  } catch (err) {
+    showToast('Failed to delete', 'error');
+  }
+}
+
+async function deleteFeedPurchase(id) {
+  if (!confirm('Are you sure you want to delete this feed purchase record?')) return;
+  try {
+    await fetch(`/api/feed/${id}`, { method: 'DELETE' });
+    showToast('Feed record removed', 'success');
+    loadDashboard();
+    loadFeedTable();
+    loadExpensesTable();
+  } catch (err) {
+    showToast('Failed to delete', 'error');
+  }
+}
+
+async function deleteExpense(id) {
+  if (!confirm('Are you sure you want to delete this expense record?')) return;
+  try {
+    await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+    showToast('Expense removed', 'success');
+    loadDashboard();
+    loadExpensesTable();
+  } catch (err) {
+    showToast('Failed to delete', 'error');
+  }
+}
+
+// ----------------- DEMO SEED & RESET ----------------- //
+
+async function seedDemoData() {
+  if (!confirm('Load 30 days of realistic sample dairy data (milk sales, feed, vet, equipment)?')) return;
+  try {
+    const res = await fetch('/api/seed', { method: 'POST' });
+    const result = await res.json();
+    if (result.success) {
+      showToast(result.message, 'success');
+      loadDashboard();
+      loadRecentTables();
+    } else {
+      showToast(result.message, 'info');
+    }
+  } catch (err) {
+    showToast('Failed to seed data', 'error');
+  }
+}
+
+async function confirmResetData() {
+  if (!confirm('⚠️ WARNING: This will permanently delete ALL milk sales, feed purchases, and expenses! Are you sure?')) return;
+  try {
+    const res = await fetch('/api/reset', { method: 'POST' });
+    const result = await res.json();
+    showToast(result.message, 'info');
+    loadDashboard();
+    loadRecentTables();
+  } catch (err) {
+    showToast('Failed to reset', 'error');
+  }
+}
+
+// ----------------- UTILITIES ----------------- //
+
+function formatNumber(num) {
+  return Number(num || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function showToast(msg, type = 'success') {
+  const toast = document.getElementById('toast');
+  const icon = document.getElementById('toast-icon');
+  const message = document.getElementById('toast-message');
+
+  message.innerText = msg;
+  if (type === 'error') {
+    icon.className = 'fa-solid fa-circle-exclamation text-rose-400';
+  } else if (type === 'info') {
+    icon.className = 'fa-solid fa-circle-info text-blue-400';
+  } else {
+    icon.className = 'fa-solid fa-circle-check text-emerald-400';
+  }
+
+  toast.classList.remove('translate-y-24', 'opacity-0');
+  setTimeout(() => {
+    toast.classList.add('translate-y-24', 'opacity-0');
+  }, 3500);
+}
