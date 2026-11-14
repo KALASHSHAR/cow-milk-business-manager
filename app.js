@@ -1507,42 +1507,96 @@ function closeLoginModal() {
   document.getElementById('loginModal').classList.add('hidden');
 }
 
-let quickLoginSelectedRole = 'Owner';
+let isAuthRegisterMode = false;
 
-function setQuickLoginRole(role) {
-  quickLoginSelectedRole = role;
-  const emailInput = document.getElementById('quick-login-email');
-  const nameInput = document.getElementById('quick-login-name');
-  if (role === 'Owner') {
-    if (!emailInput.value) emailInput.value = 'owner@gaudhan.com';
-    if (!nameInput.value) nameInput.value = 'Farm Owner';
-    showToast('Role selected: 👑 Farm Owner', 'info');
+function toggleAuthRegisterMode() {
+  isAuthRegisterMode = !isAuthRegisterMode;
+  const nameBox = document.getElementById('auth-register-name-container');
+  const btnText = document.getElementById('auth-submit-btn-text');
+  const toggleBtn = document.getElementById('btn-toggle-auth-mode');
+  const errBanner = document.getElementById('loginErrorBanner');
+  if (errBanner) errBanner.classList.add('hidden');
+
+  if (isAuthRegisterMode) {
+    if (nameBox) nameBox.classList.remove('hidden');
+    if (btnText) btnText.innerText = 'Set Password & Create Account';
+    if (toggleBtn) toggleBtn.innerHTML = 'Already have a password? <span class="font-bold underline text-emerald-700">Sign In</span>';
   } else {
-    if (!emailInput.value) emailInput.value = 'staff@gaudhan.com';
-    if (!nameInput.value) nameInput.value = 'Dairy Staff';
-    showToast('Role selected: 👤 Staff Member', 'info');
+    if (nameBox) nameBox.classList.add('hidden');
+    if (btnText) btnText.innerText = 'Sign In with Password';
+    if (toggleBtn) toggleBtn.innerHTML = "Don't have a password yet? <span class=\"font-bold underline text-emerald-700\">Set Up Password / Register</span>";
   }
 }
 
-async function submitQuickLogin(e) {
-  e.preventDefault();
-  const email = document.getElementById('quick-login-email').value.trim();
-  const name = document.getElementById('quick-login-name').value.trim();
+function togglePasswordVisibility(inputId, btnEl) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const isPass = input.type === 'password';
+  input.type = isPass ? 'text' : 'password';
+  const icon = btnEl.querySelector('i');
+  if (icon) {
+    icon.className = isPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+  }
+}
 
+async function handleForgotPassword() {
+  const emailInput = document.getElementById('auth-email-input');
+  let email = emailInput ? emailInput.value.trim() : '';
   if (!email) {
-    showToast('Please enter your email', 'error');
+    email = prompt("Enter your email address to receive a password reset link:");
+    if (!email) return;
+  }
+  try {
+    showToast('Sending password reset email...', 'info');
+    await firebaseManager.sendPasswordReset(email);
+    showToast(`Password reset link sent to ${email}! Check your inbox.`, 'success');
+  } catch (err) {
+    console.error("Password reset error:", err);
+    showToast(err.message || 'Failed to send reset email', 'error');
+  }
+}
+
+async function handleEmailPasswordAuth(e) {
+  e.preventDefault();
+  const emailInput = document.getElementById('auth-email-input');
+  const passInput = document.getElementById('auth-password-input');
+  const nameInput = document.getElementById('auth-display-name');
+  const errBanner = document.getElementById('loginErrorBanner');
+  const errText = document.getElementById('loginErrorText');
+
+  if (errBanner) errBanner.classList.add('hidden');
+
+  const email = emailInput ? emailInput.value.trim() : '';
+  const password = passInput ? passInput.value : '';
+  const name = (nameInput && !nameInput.parentElement.classList.contains('hidden')) ? nameInput.value.trim() : '';
+
+  if (!email || !password) {
+    showToast('Please enter both email and password', 'error');
     return;
   }
 
   try {
-    const user = await firebaseManager.signInDirect(email, name, quickLoginSelectedRole);
+    showToast(isAuthRegisterMode ? 'Creating account...' : 'Signing in...', 'info');
+    let user;
+    if (isAuthRegisterMode) {
+      user = await firebaseManager.registerWithEmailPassword(email, password, name);
+      showToast('Account created and signed in successfully!', 'success');
+    } else {
+      user = await firebaseManager.signInWithEmailPassword(email, password);
+      showToast(`Welcome back, ${user.displayName || user.email}!`, 'success');
+    }
+
     closeLoginModal();
-    showToast(`Signed in as ${user.displayName || user.email} (${quickLoginSelectedRole})!`, 'success');
+    if (passInput) passInput.value = '';
     loadDashboard();
     loadRecentTables();
   } catch (err) {
-    console.error("Direct sign in error:", err);
-    showToast(err.message || 'Failed to sign in', 'error');
+    console.error("Authentication error:", err);
+    if (errBanner && errText) {
+      errText.innerText = err.message;
+      errBanner.classList.remove('hidden');
+    }
+    showToast(err.message || 'Authentication failed', 'error');
   }
 }
 
@@ -1593,6 +1647,10 @@ document.addEventListener('click', (e) => {
 });
 
 function openAccessModal() {
+  if (firebaseManager.currentUserRole !== 'Owner') {
+    showToast('Permission Denied: Only the Farm Owner can manage staff access.', 'error');
+    return;
+  }
   document.getElementById('userDropdownMenu')?.classList.add('hidden');
   document.getElementById('moreMenu')?.classList.add('hidden');
   document.getElementById('accessModal').classList.remove('hidden');
@@ -1619,17 +1677,17 @@ async function loadAuthorizedUsersList() {
       return;
     }
 
-    const currentEmail = firebaseManager.currentUser ? firebaseManager.currentUser.email.toLowerCase() : '';
-    const isOwnerOrAdmin = firebaseManager.currentUserRole === 'Owner' || firebaseManager.currentUserRole === 'Admin';
+    const currentEmail = firebaseManager.currentUser ? (firebaseManager.currentUser.email || '').toLowerCase() : '';
+    const isOwner = firebaseManager.currentUserRole === 'Owner';
 
     container.innerHTML = users.map(u => {
       const email = u.email || u.id;
       const name = u.name || email.split('@')[0];
       const role = u.role || 'Staff';
-      const isOwner = role === 'Owner';
+      const isUserOwner = role === 'Owner' || email.toLowerCase() === 'kalashshar1234@gmail.com';
       const isSelf = email.toLowerCase() === currentEmail;
 
-      const roleBadge = isOwner 
+      const roleBadge = isUserOwner 
         ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">👑 Owner</span>`
         : (role === 'Admin'
             ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">🛡️ Admin</span>`
@@ -1651,7 +1709,7 @@ async function loadAuthorizedUsersList() {
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             ${roleBadge}
-            ${(!isOwner && isOwnerOrAdmin && !isSelf) ? `
+            ${(!isUserOwner && isOwner && !isSelf) ? `
               <button onclick="handleDeleteAuthorizedUser('${email}')" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs transition-colors" title="Revoke Access">
                 <i class="fa-regular fa-trash-can"></i>
               </button>
@@ -1668,6 +1726,11 @@ async function loadAuthorizedUsersList() {
 
 async function submitAddAuthorizedUser(e) {
   e.preventDefault();
+  if (firebaseManager.currentUserRole !== 'Owner') {
+    showToast('Permission Denied: Only the Farm Owner can authorize staff.', 'error');
+    return;
+  }
+
   const emailInput = document.getElementById('access-user-email');
   const nameInput = document.getElementById('access-user-name');
   const roleSelect = document.getElementById('access-user-role');
@@ -1694,6 +1757,11 @@ async function submitAddAuthorizedUser(e) {
 }
 
 async function handleDeleteAuthorizedUser(email) {
+  if (firebaseManager.currentUserRole !== 'Owner') {
+    showToast('Permission Denied: Only the Farm Owner can revoke staff access.', 'error');
+    return;
+  }
+
   if (!confirm(`Are you sure you want to revoke access for ${email}?`)) {
     return;
   }

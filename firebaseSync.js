@@ -9,6 +9,9 @@ const DEFAULT_FIREBASE_CONFIG = {
   measurementId: "G-F7XWQPM9HJ"
 };
 
+// Immutable Primary Farm Owner - Only this verified account can manage staff & ownership
+const PRIMARY_OWNER_EMAIL = "kalashshar1234@gmail.com";
+
 const firebaseManager = {
   app: null,
   db: null,
@@ -41,19 +44,8 @@ const firebaseManager = {
       }
     }
 
-    // Restore saved direct session if available
-    const savedUser = localStorage.getItem('gaudhan_active_user');
-    if (savedUser) {
-      try {
-        const u = JSON.parse(savedUser);
-        if (u && u.email) {
-          this.currentUser = { email: u.email, displayName: u.name, photoURL: u.photoURL || '' };
-          this.currentUserRole = u.role || 'Owner';
-          this.updateAuthUI(this.currentUser, this.currentUserRole);
-        }
-      } catch (e) {}
-    }
-
+    // Clean up any legacy unverified session
+    localStorage.removeItem('gaudhan_active_user');
     this.updateUI();
   },
 
@@ -109,19 +101,6 @@ const firebaseManager = {
           if (typeof closeLoginModal === 'function') closeLoginModal();
         }
       } else {
-        // If no firebase auth user, check if we have a direct login saved
-        const savedUser = localStorage.getItem('gaudhan_active_user');
-        if (savedUser) {
-          try {
-            const u = JSON.parse(savedUser);
-            if (u && u.email) {
-              this.currentUser = { email: u.email, displayName: u.name, photoURL: u.photoURL || '' };
-              this.currentUserRole = u.role || 'Owner';
-              this.updateAuthUI(this.currentUser, this.currentUserRole);
-              return;
-            }
-          } catch(e) {}
-        }
         this.currentUser = null;
         this.currentUserRole = null;
         this.updateAuthUI(null, null);
@@ -130,43 +109,43 @@ const firebaseManager = {
   },
 
   async verifyUserAccess(user) {
-    const email = user.email.toLowerCase();
+    const email = (user && user.email) ? user.email.toLowerCase().trim() : '';
+    if (!email) return { role: 'unauthorized', authorized: false };
 
-    // 1. Check in Cloud Firestore
-    if (this.db) {
-      try {
-        const usersCol = await this.db.collection('authorized_users').get();
-        if (usersCol.empty) {
-          // First user who logs in becomes the Primary Farm Owner!
-          const ownerDoc = {
+    // 1. Immutable Primary Farm Owner check
+    if (email === PRIMARY_OWNER_EMAIL.toLowerCase()) {
+      if (this.db) {
+        try {
+          await this.db.collection('authorized_users').doc(email).set({
             email: email,
-            name: user.displayName || 'Farm Owner',
+            name: user.displayName || 'Kalash Sharma (Owner)',
             role: 'Owner',
             photoURL: user.photoURL || '',
-            addedBy: 'System (First Login)'
-          };
-          await this.db.collection('authorized_users').doc(email).set(ownerDoc);
-          // Also sync to local SQLite
-          try {
-            await fetch('/api/access/users', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, name: user.displayName, role: 'Owner', photo_url: user.photoURL, added_by: 'System' })
-            });
-          } catch(e) {}
-          return { role: 'Owner', authorized: true };
+            addedBy: 'Primary Farm Owner'
+          }, { merge: true });
+        } catch(e) {
+          console.warn("Firestore primary owner sync:", e);
         }
+      }
+      return { role: 'Owner', authorized: true };
+    }
 
+    // 2. Check Cloud Firestore authorized_users collection for team members
+    if (this.db) {
+      try {
         const doc = await this.db.collection('authorized_users').doc(email).get();
         if (doc.exists) {
-          return { role: doc.data().role || 'Staff', authorized: true };
+          const d = doc.data();
+          // Safety: ONLY PRIMARY_OWNER_EMAIL can ever hold the Owner role
+          const role = (d.role === 'Owner') ? 'Staff' : (d.role || 'Staff');
+          return { role: role, authorized: true };
         }
       } catch (cloudErr) {
         console.warn("Firestore access check error:", cloudErr);
       }
     }
 
-    // 2. Fallback check local SQLite database
+    // 3. Fallback check local SQLite database
     try {
       const res = await fetch('/api/access/check', {
         method: 'POST',
@@ -175,16 +154,18 @@ const firebaseManager = {
       });
       const data = await res.json();
       if (data.authorized && data.role) {
-        return { role: data.role, authorized: true };
+        const role = (data.role === 'Owner') ? 'Staff' : data.role;
+        return { role: role, authorized: true };
       }
     } catch (localErr) {
       console.warn("Local access check error:", localErr);
     }
 
-    // If not found in authorized users list, mark unauthorized
+    // Not on the authorized list -> Block access completely
     return { role: 'unauthorized', authorized: false };
   },
 
+  // Real Google Account Sign-In with OAuth & Password verification by Google
   async signInWithGoogle() {
     if (!this.auth) {
       if (DEFAULT_FIREBASE_CONFIG) this.connect(DEFAULT_FIREBASE_CONFIG);
@@ -204,51 +185,93 @@ const firebaseManager = {
     } catch (err) {
       console.warn("Google sign-in popup error:", err);
       if (err.code === 'auth/unauthorized-domain') {
-        throw new Error(`Domain/IP '${window.location.hostname}' is not authorized in Firebase Console -> Authentication -> Settings -> Authorized Domains. Add it there, or use Quick Farm Login below!`);
+        throw new Error(`Domain '${window.location.hostname}' is not authorized in Firebase Console -> Authentication -> Settings -> Authorized Domains.`);
       } else if (err.code === 'auth/operation-not-allowed') {
-        throw new Error("Google Sign-In is not enabled yet in your Firebase project. Go to Firebase Console -> Authentication -> Sign-in method -> Enable Google, or use Quick Farm Login below!");
+        throw new Error("Google Sign-In is not enabled yet in your Firebase project. Go to Firebase Console -> Authentication -> Sign-in method -> Enable Google.");
       } else if (err.code === 'auth/popup-blocked') {
-        throw new Error("Browser popup was blocked. Please allow popups for this site, or use Quick Farm Login below.");
+        throw new Error("Browser popup was blocked. Please allow popups for this site.");
       } else if (err.code === 'auth/popup-closed-by-user') {
         throw new Error("Sign-in window was closed before completing.");
       } else {
-        throw new Error(err.message || "Google sign-in failed. You can sign in using Quick Farm Login below.");
+        throw new Error(err.message || "Google sign-in failed. Please try again.");
       }
     }
   },
 
-  async signInDirect(email, name = '', role = null) {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanName = name.trim() || cleanEmail.split('@')[0];
-
-    let assignedRole = role;
-    if (!assignedRole) {
-      const access = await this.verifyUserAccess({ email: cleanEmail, displayName: cleanName, photoURL: '' });
-      assignedRole = access.role;
+  // Real Email & Password Sign-In (Firebase Authentication)
+  async signInWithEmailPassword(email, password) {
+    if (!this.auth) {
+      if (DEFAULT_FIREBASE_CONFIG) this.connect(DEFAULT_FIREBASE_CONFIG);
     }
+    if (!this.auth) throw new Error("Firebase Auth is not available.");
 
-    const photoURL = `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanName)}&background=0D8ABC&color=fff`;
-    const userObj = {
-      email: cleanEmail,
-      displayName: cleanName,
-      photoURL: photoURL
-    };
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+    if (!cleanEmail || !cleanPass) throw new Error("Please enter both email and password.");
 
-    this.currentUser = userObj;
-    this.currentUserRole = assignedRole;
-    localStorage.setItem('gaudhan_active_user', JSON.stringify({ email: cleanEmail, name: cleanName, role: assignedRole, photoURL }));
-    
-    // Sync to SQLite
     try {
-      await fetch('/api/access/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, name: cleanName, role: assignedRole, photo_url: photoURL, added_by: 'Self' })
-      });
-    } catch(e) {}
+      const res = await this.auth.signInWithEmailAndPassword(cleanEmail, cleanPass);
+      localStorage.removeItem('gaudhan_active_user');
+      return res.user;
+    } catch (err) {
+      console.warn("Email/Password login error:", err);
+      if (err.code === 'auth/user-not-found') {
+        throw new Error("No account found for this email. Click 'Set Up Password / Register' to create one.");
+      } else if (err.code === 'auth/wrong-password') {
+        throw new Error("Incorrect password. Please verify and try again.");
+      } else if (err.code === 'auth/invalid-credential') {
+        throw new Error("Invalid email or password. Please verify your credentials.");
+      } else if (err.code === 'auth/invalid-email') {
+        throw new Error("Invalid email address format.");
+      } else if (err.code === 'auth/operation-not-allowed') {
+        throw new Error("Email/Password login is not enabled in Firebase. Enable 'Email/Password' in Firebase Console -> Authentication -> Sign-in method, or use Google Sign-In!");
+      } else {
+        throw new Error(err.message || "Failed to sign in. Please check your password.");
+      }
+    }
+  },
 
-    this.updateAuthUI(userObj, assignedRole);
-    return userObj;
+  // Register / Set up Password with Firebase Auth
+  async registerWithEmailPassword(email, password, name = '') {
+    if (!this.auth) {
+      if (DEFAULT_FIREBASE_CONFIG) this.connect(DEFAULT_FIREBASE_CONFIG);
+    }
+    if (!this.auth) throw new Error("Firebase Auth is not available.");
+
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+    if (cleanPass.length < 6) throw new Error("Password must be at least 6 characters long.");
+
+    try {
+      const res = await this.auth.createUserWithEmailAndPassword(cleanEmail, cleanPass);
+      if (res.user && name) {
+        try {
+          await res.user.updateProfile({ displayName: name });
+        } catch (e) {}
+      }
+      localStorage.removeItem('gaudhan_active_user');
+      return res.user;
+    } catch (err) {
+      console.warn("Registration error:", err);
+      if (err.code === 'auth/email-already-in-use') {
+        throw new Error("An account already exists for this email. Please sign in with your password.");
+      } else if (err.code === 'auth/weak-password') {
+        throw new Error("Password is too weak. Please use at least 6 characters.");
+      } else if (err.code === 'auth/operation-not-allowed') {
+        throw new Error("Email/Password is not enabled in Firebase. Enable 'Email/Password' in Firebase Console -> Authentication -> Sign-in method, or use Google Sign-In!");
+      } else {
+        throw new Error(err.message || "Account registration failed.");
+      }
+    }
+  },
+
+  // Send Password Reset Email
+  async sendPasswordReset(email) {
+    if (!this.auth) throw new Error("Firebase Auth is not available.");
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) throw new Error("Please enter your email address to receive password reset link.");
+    await this.auth.sendPasswordResetEmail(cleanEmail);
+    return true;
   },
 
   async signOutGoogle() {
@@ -287,13 +310,22 @@ const firebaseManager = {
   },
 
   async addAuthorizedUser(email, name = '', role = 'Staff') {
+    if (this.currentUserRole !== 'Owner') {
+      throw new Error("Security Restriction: Only the Primary Farm Owner can manage staff access.");
+    }
     const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail === PRIMARY_OWNER_EMAIL.toLowerCase()) {
+      throw new Error("Owner email is already registered as Primary Owner.");
+    }
+
+    // Non-owner accounts can only be Staff or Admin, never Owner
+    const safeRole = (role === 'Owner') ? 'Admin' : (role || 'Staff');
     const payload = {
       email: cleanEmail,
       name: name.trim() || cleanEmail.split('@')[0],
-      role: role,
+      role: safeRole,
       photoURL: '',
-      addedBy: this.currentUser ? this.currentUser.email : 'Admin'
+      addedBy: this.currentUser ? (this.currentUser.email || 'Owner') : 'Owner'
     };
 
     // Save in Firestore
@@ -306,22 +338,30 @@ const firebaseManager = {
     }
 
     // Save in SQLite
-    await fetch('/api/access/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: cleanEmail,
-        name: payload.name,
-        role: role,
-        added_by: payload.addedBy
-      })
-    });
+    try {
+      await fetch('/api/access/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          name: payload.name,
+          role: safeRole,
+          added_by: payload.addedBy
+        })
+      });
+    } catch(e) {}
 
     return true;
   },
 
   async removeAuthorizedUser(email) {
+    if (this.currentUserRole !== 'Owner') {
+      throw new Error("Security Restriction: Only the Primary Farm Owner can revoke staff access.");
+    }
     const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail === PRIMARY_OWNER_EMAIL.toLowerCase()) {
+      throw new Error("Security Restriction: The Primary Farm Owner cannot be deleted or revoked.");
+    }
 
     // Remove from Firestore
     if (this.db) {
@@ -333,11 +373,14 @@ const firebaseManager = {
     }
 
     // Remove from SQLite
-    const res = await fetch(`/api/access/users/${encodeURIComponent(cleanEmail)}`, {
-      method: 'DELETE'
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
+    try {
+      const res = await fetch(`/api/access/users/${encodeURIComponent(cleanEmail)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+    } catch(e) {}
+
     return true;
   },
 
@@ -387,12 +430,12 @@ const firebaseManager = {
         if (unauthModal) unauthModal.classList.add('hidden');
       }
 
-      // Hide/Show Admin features
-      const isAdminOrOwner = role === 'Owner' || role === 'Admin';
+      // ONLY the Primary Farm Owner can see and use the Manage Staff buttons
+      const isOwner = role === 'Owner';
       const manageMenuBtn = document.getElementById('btn-manage-access-menu');
       const moreManageBtn = document.getElementById('btn-more-manage-access');
-      if (manageMenuBtn) manageMenuBtn.style.display = isAdminOrOwner ? 'flex' : 'none';
-      if (moreManageBtn) moreManageBtn.style.display = isAdminOrOwner ? 'flex' : 'none';
+      if (manageMenuBtn) manageMenuBtn.style.display = isOwner ? 'flex' : 'none';
+      if (moreManageBtn) moreManageBtn.style.display = isOwner ? 'flex' : 'none';
     } else {
       if (btnLogin) btnLogin.classList.remove('hidden');
       if (badge) badge.classList.add('hidden');
