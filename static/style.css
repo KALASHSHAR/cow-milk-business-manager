@@ -1,11 +1,34 @@
-/* Custom Styles for Dairy Farm Manager */
+/* Custom Styles for Dairy Farm Manager - Mobile First */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 body {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-/* Custom Scrollbar */
+/* Prevent auto-zoom on mobile safari when focusing inputs */
+@media screen and (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Safe area insets for modern mobile screens (iPhone notch / Android navigation bar) */
+.pb-safe {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Hide scrollbar utility for smooth horizontal swiping */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Scrollbar for Desktop */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -26,7 +49,18 @@ body {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Modal animation */
+/* Modal Bottom-Sheet animation on mobile */
+@keyframes sheetUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes modalIn {
   from {
     opacity: 0;
@@ -38,6 +72,14 @@ body {
   }
 }
 
-.modal-enter {
-  animation: modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+@media (max-width: 640px) {
+  .modal-sheet-enter {
+    animation: sheetUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+@media (min-width: 641px) {
+  .modal-sheet-enter {
+    animation: modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
 }

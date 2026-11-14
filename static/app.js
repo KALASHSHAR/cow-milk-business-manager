@@ -407,10 +407,10 @@ function switchTableTab(tab) {
     const btn = document.getElementById(`tab-btn-${t}`);
     const content = document.getElementById(`table-content-${t}`);
     if (t === tab) {
-      btn.className = 'px-4 py-2.5 font-bold text-sm border-b-2 border-emerald-600 text-emerald-800 transition-all flex items-center gap-2';
+      btn.className = 'px-3 sm:px-4 py-2 sm:py-2.5 font-bold text-xs sm:text-sm border-b-2 border-emerald-600 text-emerald-800 transition-all flex items-center gap-1.5 whitespace-nowrap';
       content.classList.remove('hidden');
     } else {
-      btn.className = 'px-4 py-2.5 font-bold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all flex items-center gap-2';
+      btn.className = 'px-3 sm:px-4 py-2 sm:py-2.5 font-bold text-xs sm:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all flex items-center gap-1.5 whitespace-nowrap';
       content.classList.add('hidden');
     }
   });
@@ -434,44 +434,100 @@ async function loadMilkTable() {
     }
 
     const tbody = document.getElementById('milk-table-body');
+    const cardsContainer = document.getElementById('milk-cards-body');
+
     if (!records || records.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">No milk sales logged yet. Click "+ Add Daily Milk" to record sales!</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">No milk sales logged yet. Tap "+ Milk" to record sales!</td></tr>`;
+      if (cardsContainer) cardsContainer.innerHTML = `<div class="p-6 text-center text-slate-400 bg-white rounded-xl border border-slate-200 text-xs">No milk sales logged yet. Tap "+ Milk" below to record!</div>`;
       return;
     }
 
-    tbody.innerHTML = records.map(r => {
-      const receiptSrc = r.receipt_image 
-        ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
-        : null;
+    // 1. Desktop Table Rows
+    if (tbody) {
+      tbody.innerHTML = records.map(r => {
+        const receiptSrc = r.receipt_image 
+          ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
+          : null;
 
-      return `
-      <tr class="hover:bg-slate-50/70 transition-colors">
-        <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
-        <td class="py-3 px-4">
-          <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${r.shift === 'Morning' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}">
-            ${r.shift}
-          </span>
-        </td>
-        <td class="py-3 px-4 font-bold text-slate-900">${r.quantity_liters} L</td>
-        <td class="py-3 px-4 text-slate-600">₹${r.price_per_liter}</td>
-        <td class="py-3 px-4 font-semibold ${r.fat_percentage ? 'text-emerald-700' : 'text-slate-400'}">${r.fat_percentage ? r.fat_percentage + '%' : '--'}</td>
-        <td class="py-3 px-4 font-black text-emerald-600">₹${formatNumber(r.total_amount)}</td>
-        <td class="py-3 px-4 font-medium text-slate-700">${escapeHtml(r.buyer_name || '-')}</td>
-        <td class="py-3 px-4">
-          ${receiptSrc ? `
-            <button onclick="openReceiptModal('${receiptSrc}', 'Milk Slip - ${r.date} (${r.shift})')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold border border-emerald-200 transition-all">
-              <i class="fa-solid fa-receipt text-emerald-600"></i> View Slip
+        return `
+        <tr class="hover:bg-slate-50/70 transition-colors">
+          <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${r.shift === 'Morning' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}">
+              ${r.shift}
+            </span>
+          </td>
+          <td class="py-3 px-4 font-bold text-slate-900">${r.quantity_liters} L</td>
+          <td class="py-3 px-4 text-slate-600">₹${r.price_per_liter}</td>
+          <td class="py-3 px-4 font-semibold ${r.fat_percentage ? 'text-emerald-700' : 'text-slate-400'}">${r.fat_percentage ? r.fat_percentage + '%' : '--'}</td>
+          <td class="py-3 px-4 font-black text-emerald-600">₹${formatNumber(r.total_amount)}</td>
+          <td class="py-3 px-4 font-medium text-slate-700">${escapeHtml(r.buyer_name || '-')}</td>
+          <td class="py-3 px-4">
+            ${receiptSrc ? `
+              <button onclick="openReceiptModal('${receiptSrc}', 'Milk Slip - ${r.date} (${r.shift})')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold border border-emerald-200 transition-all">
+                <i class="fa-solid fa-receipt text-emerald-600"></i> View Slip
+              </button>
+            ` : `<span class="text-xs text-slate-300">--</span>`}
+          </td>
+          <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(r.notes || '')}</td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="deleteMilkSale('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
+              <i class="fa-regular fa-trash-can"></i>
             </button>
-          ` : `<span class="text-xs text-slate-300">--</span>`}
-        </td>
-        <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(r.notes || '')}</td>
-        <td class="py-3 px-4 text-right">
-          <button onclick="deleteMilkSale('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
-            <i class="fa-regular fa-trash-can"></i>
-          </button>
-        </td>
-      </tr>
-    `}).join('');
+          </td>
+        </tr>
+      `}).join('');
+    }
+
+    // 2. Mobile Responsive Card View (Touch-Optimized)
+    if (cardsContainer) {
+      cardsContainer.innerHTML = records.map(r => {
+        const receiptSrc = r.receipt_image 
+          ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
+          : null;
+
+        return `
+          <div class="milk-card-item bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-800 text-sm">${r.date}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${r.shift === 'Morning' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}">
+                  ${r.shift}
+                </span>
+              </div>
+              <span class="text-base font-black text-emerald-600">₹${formatNumber(r.total_amount)}</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-xs bg-slate-50 p-2 rounded-lg border border-slate-100">
+              <div>
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Quantity</span>
+                <span class="font-bold text-slate-900">${r.quantity_liters} L</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Rate</span>
+                <span class="font-bold text-slate-700">₹${r.price_per_liter}/L</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Fat / SNF</span>
+                <span class="font-semibold text-emerald-700">${r.fat_percentage ? r.fat_percentage + '%' : '--'}</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-0.5 text-xs text-slate-500">
+              <span class="truncate max-w-[170px]"><i class="fa-regular fa-user mr-1 text-slate-400"></i>${escapeHtml(r.buyer_name || 'Dairy')}</span>
+              <div class="flex items-center gap-2">
+                ${receiptSrc ? `
+                  <button onclick="openReceiptModal('${receiptSrc}', 'Milk Slip - ${r.date}')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1 active:scale-95">
+                    <i class="fa-solid fa-receipt text-emerald-600"></i> Slip
+                  </button>
+                ` : ''}
+                <button onclick="deleteMilkSale('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 active:scale-95 transition-colors" title="Delete">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
   } catch (err) {
     console.error(err);
   }
@@ -489,43 +545,95 @@ async function loadFeedTable() {
     }
 
     const tbody = document.getElementById('feed-table-body');
+    const cardsContainer = document.getElementById('feed-cards-body');
+
     if (!records || records.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-slate-400">No feed purchases logged yet. Click "+ Add Cow Feed" to track feed costs!</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-slate-400">No feed purchases logged yet. Tap "+ Feed" to track feed costs!</td></tr>`;
+      if (cardsContainer) cardsContainer.innerHTML = `<div class="p-6 text-center text-slate-400 bg-white rounded-xl border border-slate-200 text-xs">No feed purchases logged yet. Tap "+ Feed" below to add!</div>`;
       return;
     }
 
-    tbody.innerHTML = records.map(r => {
-      const receiptSrc = r.receipt_image 
-        ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
-        : null;
+    // 1. Desktop Table Rows
+    if (tbody) {
+      tbody.innerHTML = records.map(r => {
+        const receiptSrc = r.receipt_image 
+          ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
+          : null;
 
-      return `
-      <tr class="hover:bg-slate-50/70 transition-colors">
-        <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
-        <td class="py-3 px-4">
-          <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-            ${escapeHtml(r.feed_type)}
-          </span>
-        </td>
-        <td class="py-3 px-4 font-bold text-slate-900">${escapeHtml(r.item_name)}</td>
-        <td class="py-3 px-4 text-slate-700">${r.quantity_kg ? r.quantity_kg + ' kg' : '--'}</td>
-        <td class="py-3 px-4 font-black text-rose-600">₹${formatNumber(r.cost)}</td>
-        <td class="py-3 px-4 text-slate-600">${escapeHtml(r.supplier || '-')}</td>
-        <td class="py-3 px-4">
-          ${receiptSrc ? `
-            <button onclick="openReceiptModal('${receiptSrc}', 'Feed Invoice - ${escapeHtml(r.item_name)}')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-semibold border border-amber-200 transition-all">
-              <i class="fa-solid fa-receipt text-amber-600"></i> View Bill
+        return `
+        <tr class="hover:bg-slate-50/70 transition-colors">
+          <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+              ${escapeHtml(r.feed_type)}
+            </span>
+          </td>
+          <td class="py-3 px-4 font-bold text-slate-900">${escapeHtml(r.item_name)}</td>
+          <td class="py-3 px-4 text-slate-700">${r.quantity_kg ? r.quantity_kg + ' kg' : '--'}</td>
+          <td class="py-3 px-4 font-black text-rose-600">₹${formatNumber(r.cost)}</td>
+          <td class="py-3 px-4 text-slate-600">${escapeHtml(r.supplier || '-')}</td>
+          <td class="py-3 px-4">
+            ${receiptSrc ? `
+              <button onclick="openReceiptModal('${receiptSrc}', 'Feed Invoice - ${escapeHtml(r.item_name)}')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-semibold border border-amber-200 transition-all">
+                <i class="fa-solid fa-receipt text-amber-600"></i> View Bill
+              </button>
+            ` : `<span class="text-xs text-slate-300">--</span>`}
+          </td>
+          <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(r.notes || '')}</td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="deleteFeedPurchase('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
+              <i class="fa-regular fa-trash-can"></i>
             </button>
-          ` : `<span class="text-xs text-slate-300">--</span>`}
-        </td>
-        <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(r.notes || '')}</td>
-        <td class="py-3 px-4 text-right">
-          <button onclick="deleteFeedPurchase('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
-            <i class="fa-regular fa-trash-can"></i>
-          </button>
-        </td>
-      </tr>
-    `}).join('');
+          </td>
+        </tr>
+      `}).join('');
+    }
+
+    // 2. Mobile Responsive Card View
+    if (cardsContainer) {
+      cardsContainer.innerHTML = records.map(r => {
+        const receiptSrc = r.receipt_image 
+          ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
+          : null;
+
+        return `
+          <div class="feed-card-item bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-800 text-sm">${r.date}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                  ${escapeHtml(r.feed_type)}
+                </span>
+              </div>
+              <span class="text-base font-black text-rose-600">₹${formatNumber(r.cost)}</span>
+            </div>
+            <div class="flex items-center justify-between text-xs bg-slate-50 p-2 rounded-lg border border-slate-100">
+              <div>
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Feed Item</span>
+                <span class="font-bold text-slate-900">${escapeHtml(r.item_name)}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Quantity</span>
+                <span class="font-semibold text-slate-700">${r.quantity_kg ? r.quantity_kg + ' kg' : '--'}</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-0.5 text-xs text-slate-500">
+              <span class="truncate max-w-[170px]"><i class="fa-solid fa-store mr-1 text-slate-400"></i>${escapeHtml(r.supplier || '-')}</span>
+              <div class="flex items-center gap-2">
+                ${receiptSrc ? `
+                  <button onclick="openReceiptModal('${receiptSrc}', 'Feed Bill - ${escapeHtml(r.item_name)}')" class="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1 active:scale-95">
+                    <i class="fa-solid fa-receipt text-amber-600"></i> Bill
+                  </button>
+                ` : ''}
+                <button onclick="deleteFeedPurchase('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 active:scale-95 transition-colors" title="Delete">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
   } catch (err) {
     console.error(err);
   }
@@ -543,42 +651,92 @@ async function loadExpensesTable() {
     }
 
     const tbody = document.getElementById('expenses-table-body');
+    const cardsContainer = document.getElementById('expenses-cards-body');
+
     if (!records || records.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">No expenses logged yet. Click "+ Add Expense" to record costs or investments!</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">No expenses logged yet. Tap "+ Expense" to record costs!</td></tr>`;
+      if (cardsContainer) cardsContainer.innerHTML = `<div class="p-6 text-center text-slate-400 bg-white rounded-xl border border-slate-200 text-xs">No expenses logged yet. Tap "+ Expense" below to add!</div>`;
       return;
     }
 
-    tbody.innerHTML = records.map(r => {
-      const receiptSrc = r.receipt_image 
-        ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
-        : null;
+    // 1. Desktop Table Rows
+    if (tbody) {
+      tbody.innerHTML = records.map(r => {
+        const receiptSrc = r.receipt_image 
+          ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
+          : null;
 
-      return `
-      <tr class="hover:bg-slate-50/70 transition-colors">
-        <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
-        <td class="py-3 px-4">
-          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${r.type === 'Capital Investment' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-100 text-slate-700'}">
-            ${r.type}
-          </span>
-        </td>
-        <td class="py-3 px-4 font-semibold text-slate-800">${escapeHtml(r.category)}</td>
-        <td class="py-3 px-4 text-slate-600 max-w-xs truncate">${escapeHtml(r.description)}</td>
-        <td class="py-3 px-4 font-black ${r.type === 'Capital Investment' ? 'text-blue-600' : 'text-rose-600'}">₹${formatNumber(r.amount)}</td>
-        <td class="py-3 px-4 text-xs font-medium text-slate-500">${escapeHtml(r.payment_mode || 'Cash')}</td>
-        <td class="py-3 px-4">
-          ${receiptSrc ? `
-            <button onclick="openReceiptModal('${receiptSrc}', 'Receipt - ${escapeHtml(r.description)}')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition-all">
-              <i class="fa-solid fa-receipt text-slate-600"></i> View Slip
+        return `
+        <tr class="hover:bg-slate-50/70 transition-colors">
+          <td class="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">${r.date}</td>
+          <td class="py-3 px-4">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${r.type === 'Capital Investment' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-100 text-slate-700'}">
+              ${r.type}
+            </span>
+          </td>
+          <td class="py-3 px-4 font-semibold text-slate-800">${escapeHtml(r.category)}</td>
+          <td class="py-3 px-4 text-slate-600 max-w-xs truncate">${escapeHtml(r.description)}</td>
+          <td class="py-3 px-4 font-black ${r.type === 'Capital Investment' ? 'text-blue-600' : 'text-rose-600'}">₹${formatNumber(r.amount)}</td>
+          <td class="py-3 px-4 text-xs font-medium text-slate-500">${escapeHtml(r.payment_mode || 'Cash')}</td>
+          <td class="py-3 px-4">
+            ${receiptSrc ? `
+              <button onclick="openReceiptModal('${receiptSrc}', 'Receipt - ${escapeHtml(r.description)}')" class="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition-all">
+                <i class="fa-solid fa-receipt text-slate-600"></i> View Slip
+              </button>
+            ` : `<span class="text-xs text-slate-300">--</span>`}
+          </td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="deleteExpense('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
+              <i class="fa-regular fa-trash-can"></i>
             </button>
-          ` : `<span class="text-xs text-slate-300">--</span>`}
-        </td>
-        <td class="py-3 px-4 text-right">
-          <button onclick="deleteExpense('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
-            <i class="fa-regular fa-trash-can"></i>
-          </button>
-        </td>
-      </tr>
-    `}).join('');
+          </td>
+        </tr>
+      `}).join('');
+    }
+
+    // 2. Mobile Responsive Card View
+    if (cardsContainer) {
+      cardsContainer.innerHTML = records.map(r => {
+        const receiptSrc = r.receipt_image 
+          ? (r.receipt_image.startsWith('http') ? r.receipt_image : `/uploads/${r.receipt_image}`)
+          : null;
+
+        return `
+          <div class="expense-card-item bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-800 text-sm">${r.date}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${r.type === 'Capital Investment' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-100 text-slate-700'}">
+                  ${r.type}
+                </span>
+              </div>
+              <span class="text-base font-black ${r.type === 'Capital Investment' ? 'text-blue-600' : 'text-rose-600'}">₹${formatNumber(r.amount)}</span>
+            </div>
+            <div class="text-xs bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between">
+              <div>
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Category</span>
+                <span class="font-bold text-slate-800">${escapeHtml(r.category)}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Payment</span>
+                <span class="font-medium text-slate-600">${escapeHtml(r.payment_mode || 'Cash')}</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-600 truncate">${escapeHtml(r.description)}</p>
+            <div class="flex items-center justify-end gap-2 pt-0.5">
+              ${receiptSrc ? `
+                <button onclick="openReceiptModal('${receiptSrc}', 'Receipt - ${escapeHtml(r.description)}')" class="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 active:scale-95">
+                  <i class="fa-solid fa-receipt text-slate-600"></i> Receipt
+                </button>
+              ` : ''}
+              <button onclick="deleteExpense('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 active:scale-95 transition-colors" title="Delete">
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
   } catch (err) {
     console.error(err);
   }
@@ -587,13 +745,26 @@ async function loadExpensesTable() {
 function filterCurrentTable() {
   const query = document.getElementById('tableSearch').value.toLowerCase();
   let tableId = 'milk-table-body';
-  if (activeTableTab === 'feed') tableId = 'feed-table-body';
-  if (activeTableTab === 'expenses') tableId = 'expenses-table-body';
+  let cardsId = 'milk-cards-body';
+  if (activeTableTab === 'feed') {
+    tableId = 'feed-table-body';
+    cardsId = 'feed-cards-body';
+  }
+  if (activeTableTab === 'expenses') {
+    tableId = 'expenses-table-body';
+    cardsId = 'expenses-cards-body';
+  }
 
-  const rows = document.getElementById(tableId).getElementsByTagName('tr');
+  const rows = document.getElementById(tableId)?.getElementsByTagName('tr') || [];
   for (let r of rows) {
     const text = r.innerText.toLowerCase();
     r.style.display = text.includes(query) ? '' : 'none';
+  }
+
+  const cards = document.getElementById(cardsId)?.children || [];
+  for (let c of cards) {
+    const text = c.innerText.toLowerCase();
+    c.style.display = text.includes(query) ? '' : 'none';
   }
 }
 
