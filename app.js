@@ -298,14 +298,18 @@ function renderPartnerInvestments(inv) {
 
 function openInvestmentModal() {
   // STRICT OWNER-ONLY SECURITY VERIFICATION
-  if (typeof firebaseManager !== 'undefined' && firebaseManager.currentUserRole !== 'Owner') {
+  const isOwner = (typeof firebaseManager !== 'undefined' && typeof firebaseManager.isOwner === 'function')
+    ? firebaseManager.isOwner()
+    : (typeof firebaseManager !== 'undefined' ? firebaseManager.currentUserRole === 'Owner' : true);
+
+  if (!isOwner) {
     showToast("Security Restriction: Only the Primary Farm Owner (kalashshar1234@gmail.com) is authorized to modify investments.", "error");
     return;
   }
 
-  document.getElementById('input-invest-kalash').value = currentPartnerInvestments.kalash || '';
-  document.getElementById('input-invest-sandesh').value = currentPartnerInvestments.sandesh || '';
-  document.getElementById('input-invest-yash').value = currentPartnerInvestments.yash || '';
+  document.getElementById('input-invest-kalash').value = (currentPartnerInvestments.kalash !== undefined && currentPartnerInvestments.kalash !== 0) ? currentPartnerInvestments.kalash : '';
+  document.getElementById('input-invest-sandesh').value = (currentPartnerInvestments.sandesh !== undefined && currentPartnerInvestments.sandesh !== 0) ? currentPartnerInvestments.sandesh : '';
+  document.getElementById('input-invest-yash').value = (currentPartnerInvestments.yash !== undefined && currentPartnerInvestments.yash !== 0) ? currentPartnerInvestments.yash : '';
   document.getElementById('input-invest-notes').value = currentPartnerInvestments.notes || '';
 
   calculateModalInvestmentTotal();
@@ -339,7 +343,11 @@ async function saveFounderInvestments(e) {
   if (e) e.preventDefault();
 
   // STRICT OWNER-ONLY SECURITY VERIFICATION
-  if (typeof firebaseManager !== 'undefined' && firebaseManager.currentUserRole !== 'Owner') {
+  const isOwner = (typeof firebaseManager !== 'undefined' && typeof firebaseManager.isOwner === 'function')
+    ? firebaseManager.isOwner()
+    : (typeof firebaseManager !== 'undefined' ? firebaseManager.currentUserRole === 'Owner' : true);
+
+  if (!isOwner) {
     showToast("Security Restriction: Only the Primary Farm Owner (kalashshar1234@gmail.com) is authorized to modify investments.", "error");
     return;
   }
@@ -347,7 +355,7 @@ async function saveFounderInvestments(e) {
   const k = parseFloat(document.getElementById('input-invest-kalash').value) || 0;
   const s = parseFloat(document.getElementById('input-invest-sandesh').value) || 0;
   const y = parseFloat(document.getElementById('input-invest-yash').value) || 0;
-  const notes = document.getElementById('input-invest-notes').value.trim();
+  const notes = (document.getElementById('input-invest-notes').value || '').trim();
 
   const data = { kalash: k, sandesh: s, yash: y, notes: notes };
   const btn = document.getElementById('btn-save-investments');
@@ -358,26 +366,33 @@ async function saveFounderInvestments(e) {
   }
 
   try {
-    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+    if (typeof firebaseManager !== 'undefined' && typeof firebaseManager.savePartnerInvestments === 'function') {
       await firebaseManager.savePartnerInvestments(data);
     } else {
-      const res = await fetch('/api/partner-investments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const result = await res.json();
-      if (!result.success) throw new Error(result.error);
+      localStorage.setItem('gaudhan_partner_investments', JSON.stringify(data));
+      try {
+        await fetch('/api/partner-investments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (e) {}
     }
 
     currentPartnerInvestments = { ...data, updated_at: new Date().toISOString() };
     renderPartnerInvestments(currentPartnerInvestments);
     closeInvestmentModal();
-    showToast("Founder investments updated successfully!", "success");
+    showToast("Founder investments saved successfully!", "success");
   } catch (err) {
     console.error("Error saving investments:", err);
     showToast(err.message || "Failed to save investments", "error");
   } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  }
+}
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = originalHtml;

@@ -430,7 +430,7 @@ const firebaseManager = {
       }
 
       // ONLY the Primary Farm Owner can see and use the Manage Founders, Admin menus, and Investment Editor
-      const isOwner = role === 'Owner';
+      const isOwner = this.isOwner();
       const manageMenuBtn = document.getElementById('btn-manage-access-menu');
       const moreManageBtn = document.getElementById('btn-more-manage-access');
       const mobileMoreAccessBtn = document.getElementById('btn-mobile-more-access');
@@ -453,7 +453,7 @@ const firebaseManager = {
       const btnEditInvestments = document.getElementById('btn-edit-investments');
       if (moreActionsDropdown) moreActionsDropdown.style.display = 'none';
       if (cloudStatusBtn) cloudStatusBtn.style.display = 'none';
-      if (btnEditInvestments) btnEditInvestments.style.display = 'none';
+      if (btnEditInvestments) btnEditInvestments.style.display = this.isOwner() ? 'inline-flex' : 'none';
     }
   },
 
@@ -510,45 +510,97 @@ const firebaseManager = {
   },
 
   // ========================================================
+  // OWNER SECURITY VERIFICATION
+  // Immutable Primary Owner: kalashshar1234@gmail.com
+  // ========================================================
+  isOwner() {
+    // 1. Explicit Owner role
+    if (this.currentUserRole === 'Owner') return true;
+
+    // 2. Verified Primary Owner Email in active session
+    if (this.currentUser && this.currentUser.email) {
+      if (this.currentUser.email.toLowerCase().trim() === PRIMARY_OWNER_EMAIL.toLowerCase().trim()) {
+        this.currentUserRole = 'Owner';
+        return true;
+      }
+    }
+
+    // 3. Fallback: Local Storage session check
+    const savedUserStr = localStorage.getItem('gaudhan_active_user');
+    if (savedUserStr) {
+      try {
+        const u = JSON.parse(savedUserStr);
+        if (u && u.email && u.email.toLowerCase().trim() === PRIMARY_OWNER_EMAIL.toLowerCase().trim()) {
+          this.currentUserRole = 'Owner';
+          return true;
+        }
+      } catch (e) {}
+    }
+
+    // 4. Local SQLite / offline single-user developer mode
+    if (!this.connected && !this.currentUser) {
+      return true;
+    }
+
+    return false;
+  },
+
+  // ========================================================
   // PARTNER CAPITAL INVESTMENTS (Owner-Only Mutation)
   // Kalash, Sandesh, Yash
   // ========================================================
   async getPartnerInvestments() {
+    // 1. Try local cache first for instant render
+    let cachedData = null;
+    const cached = localStorage.getItem('gaudhan_partner_investments');
+    if (cached) {
+      try { cachedData = JSON.parse(cached); } catch (e) {}
+    }
+
+    // 2. Try Firestore Cloud with timeout
     if (this.db) {
       try {
-        const doc = await this.db.collection('settings').doc('partner_investments').get();
-        if (doc.exists) {
-          const data = doc.data();
-          localStorage.setItem('gaudhan_partner_investments', JSON.stringify(data));
-          return data;
+        const docPromise = this.db.collection('partner_investments').doc('current').get();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Firestore read timeout')), 3000)
+        );
+        const doc = await Promise.race([docPromise, timeoutPromise]);
+        if (doc && doc.exists) {
+          const cloudData = doc.data();
+          localStorage.setItem('gaudhan_partner_investments', JSON.stringify(cloudData));
+          return cloudData;
+        } else {
+          // Fallback to settings doc
+          const doc2 = await this.db.collection('settings').doc('partner_investments').get().catch(() => null);
+          if (doc2 && doc2.exists) {
+            const data2 = doc2.data();
+            localStorage.setItem('gaudhan_partner_investments', JSON.stringify(data2));
+            return data2;
+          }
         }
       } catch (e) {
-        console.warn("Firestore getPartnerInvestments error:", e);
+        console.warn("Firestore getPartnerInvestments warning:", e);
       }
     }
 
-    // Try SQLite API
+    // 3. Try SQLite API if on local server
     try {
       const res = await fetch('/api/partner-investments');
-      const json = await res.json();
-      if (json.success && json.data) {
-        localStorage.setItem('gaudhan_partner_investments', JSON.stringify(json.data));
-        return json.data;
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          localStorage.setItem('gaudhan_partner_investments', JSON.stringify(json.data));
+          return json.data;
+        }
       }
     } catch (e) {}
 
-    // Fallback to local cache
-    const cached = localStorage.getItem('gaudhan_partner_investments');
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) {}
-    }
-
-    return { kalash: 0, sandesh: 0, yash: 0, notes: '', updated_at: null };
+    return cachedData || { kalash: 0, sandesh: 0, yash: 0, notes: '', updated_at: null };
   },
 
   async savePartnerInvestments(investData) {
     // STRICT SECURITY: Only Primary Farm Owner can modify investments
-    if (this.currentUserRole !== 'Owner') {
+    if (!this.isOwner()) {
       throw new Error("Security Restriction: Only the Primary Farm Owner (kalashshar1234@gmail.com) is authorized to modify investments.");
     }
 
@@ -561,12 +613,26 @@ const firebaseManager = {
       updated_by: this.currentUser ? this.currentUser.email : 'Primary Owner'
     };
 
-    // Save to Firestore Cloud
+    // 1. Instantly save to localStorage (guaranteed persistence across refresh)
+    localStorage.setItem('gaudhan_partner_investments', JSON.stringify(payload));
+
+    // 2. Save to Firestore Cloud with timeout and dual collection fallback
     if (this.db) {
-      await this.db.collection('settings').doc('partner_investments').set(payload, { merge: true });
+      try {
+        const writePromise = Promise.all([
+          this.db.collection('partner_investments').doc('current').set(payload, { merge: true }),
+          this.db.collection('settings').doc('partner_investments').set(payload, { merge: true }).catch(() => {})
+        ]);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Firestore write timeout')), 3500)
+        );
+        await Promise.race([writePromise, timeoutPromise]);
+      } catch (cloudErr) {
+        console.warn("Firestore savePartnerInvestments cloud warning:", cloudErr);
+      }
     }
 
-    // Save to local SQLite
+    // 3. Save to local SQLite if running local backend
     try {
       await fetch('/api/partner-investments', {
         method: 'POST',
@@ -575,7 +641,6 @@ const firebaseManager = {
       });
     } catch (e) {}
 
-    localStorage.setItem('gaudhan_partner_investments', JSON.stringify(payload));
     return payload;
   },
 
