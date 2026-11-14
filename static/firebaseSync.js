@@ -114,27 +114,48 @@ const firebaseManager = {
     }
   },
 
-  // Upload receipt image to Firebase Cloud Storage with local fallback
+  // Upload receipt image to Firebase Cloud Storage with fast 2.5s timeout & local fallback
   async uploadReceipt(file, folder = 'receipts') {
-    if (!this.connected || !file) return null;
-    try {
-      const ext = file.name.split('.').pop() || 'jpg';
-      const filename = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
-      const fileRef = this.storage.ref().child(filename);
-      const snapshot = await fileRef.put(file);
-      const downloadUrl = await snapshot.ref.getDownloadURL();
-      return downloadUrl;
-    } catch (err) {
-      console.warn("Firebase Storage upload error, falling back:", err);
-      // Fallback: try uploading to local server if available
+    if (!file) return null;
+
+    // Helper: try local upload immediately
+    const uploadLocally = async () => {
       try {
         const formData = new FormData();
         formData.append('receipt', file);
         const res = await fetch('/api/upload-receipt', { method: 'POST', body: formData });
         const d = await res.json();
         if (d.success) return d.filename;
-      } catch (localErr) {}
+      } catch (e) {
+        console.warn('Local receipt upload error:', e);
+      }
       return null;
+    };
+
+    if (!this.connected || !this.storage) {
+      return await uploadLocally();
+    }
+
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filename = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
+      const fileRef = this.storage.ref().child(filename);
+
+      // Fast 2.5-second timeout so uninitialized Firebase Storage NEVER blocks saving
+      const cloudTask = async () => {
+        const snapshot = await fileRef.put(file);
+        return await snapshot.ref.getDownloadURL();
+      };
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Firebase Storage timeout (Storage bucket not initialized or slow)')), 2500)
+      );
+
+      return await Promise.race([cloudTask(), timeoutPromise]);
+    } catch (err) {
+      console.warn("Firebase Cloud Storage upload skipped:", err.message);
+      // Immediately fallback to saving locally
+      return await uploadLocally();
     }
   },
 
@@ -159,7 +180,13 @@ const firebaseManager = {
       created_at: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    const docRef = await this.db.collection('milk_sales').add(docData);
+    // 3-second timeout for Firestore write
+    const writePromise = this.db.collection('milk_sales').add(docData);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore write timeout')), 3000)
+    );
+
+    const docRef = await Promise.race([writePromise, timeoutPromise]);
     return docRef.id;
   },
 
@@ -202,26 +229,32 @@ const firebaseManager = {
       created_at: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    const feedRef = await this.db.collection('feed_purchases').add(docData);
+    const feedPromise = (async () => {
+      const feedRef = await this.db.collection('feed_purchases').add(docData);
+      // Auto-log to expenses collection
+      let desc = `Feed Purchase: ${data.item_name} (${data.feed_type})`;
+      if (qty > 0) desc += ` - ${qty} kg`;
+      if (data.supplier) desc += ` from ${data.supplier}`;
 
-    // Auto-log to expenses collection
-    let desc = `Feed Purchase: ${data.item_name} (${data.feed_type})`;
-    if (qty > 0) desc += ` - ${qty} kg`;
-    if (data.supplier) desc += ` from ${data.supplier}`;
+      await this.db.collection('expenses').add({
+        date: data.date,
+        type: 'Operational',
+        category: 'Cow Feed',
+        description: desc,
+        amount: cost,
+        payment_mode: data.payment_mode || 'Cash',
+        feed_purchase_id: feedRef.id,
+        receipt_image: receiptUrl,
+        created_at: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      return feedRef.id;
+    })();
 
-    await this.db.collection('expenses').add({
-      date: data.date,
-      type: 'Operational',
-      category: 'Cow Feed',
-      description: desc,
-      amount: cost,
-      payment_mode: data.payment_mode || 'Cash',
-      feed_purchase_id: feedRef.id,
-      receipt_image: receiptUrl,
-      created_at: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore feed write timeout')), 3000)
+    );
 
-    return feedRef.id;
+    return await Promise.race([feedPromise, timeoutPromise]);
   },
 
   async getFeed(limitCount = 100) {
@@ -267,8 +300,12 @@ const firebaseManager = {
       created_at: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    const docRef = await this.db.collection('expenses').add(docData);
-    return docRef.id;
+    const writePromise = this.db.collection('expenses').add(docData).then(docRef => docRef.id);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore expense write timeout')), 3000)
+    );
+
+    return await Promise.race([writePromise, timeoutPromise]);
   },
 
   async getExpenses(limitCount = 100) {
