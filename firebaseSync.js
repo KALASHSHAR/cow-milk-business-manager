@@ -429,27 +429,31 @@ const firebaseManager = {
         if (unauthModal) unauthModal.classList.add('hidden');
       }
 
-      // ONLY the Primary Farm Owner can see and use the Manage Founders and Admin menus
+      // ONLY the Primary Farm Owner can see and use the Manage Founders, Admin menus, and Investment Editor
       const isOwner = role === 'Owner';
       const manageMenuBtn = document.getElementById('btn-manage-access-menu');
       const moreManageBtn = document.getElementById('btn-more-manage-access');
       const mobileMoreAccessBtn = document.getElementById('btn-mobile-more-access');
       const moreActionsDropdown = document.getElementById('moreActionsDropdown');
       const cloudStatusBtn = document.getElementById('btn-cloud-status');
+      const btnEditInvestments = document.getElementById('btn-edit-investments');
 
       if (manageMenuBtn) manageMenuBtn.style.display = isOwner ? 'flex' : 'none';
       if (moreManageBtn) moreManageBtn.style.display = isOwner ? 'flex' : 'none';
       if (mobileMoreAccessBtn) mobileMoreAccessBtn.style.display = isOwner ? 'flex' : 'none';
       if (moreActionsDropdown) moreActionsDropdown.style.display = isOwner ? 'inline-block' : 'none';
       if (cloudStatusBtn) cloudStatusBtn.style.display = isOwner ? 'flex' : 'none';
+      if (btnEditInvestments) btnEditInvestments.style.display = isOwner ? 'inline-flex' : 'none';
     } else {
       if (btnLogin) btnLogin.classList.remove('hidden');
       if (badge) badge.classList.add('hidden');
       if (unauthModal) unauthModal.classList.add('hidden');
       const moreActionsDropdown = document.getElementById('moreActionsDropdown');
       const cloudStatusBtn = document.getElementById('btn-cloud-status');
+      const btnEditInvestments = document.getElementById('btn-edit-investments');
       if (moreActionsDropdown) moreActionsDropdown.style.display = 'none';
       if (cloudStatusBtn) cloudStatusBtn.style.display = 'none';
+      if (btnEditInvestments) btnEditInvestments.style.display = 'none';
     }
   },
 
@@ -503,6 +507,76 @@ const firebaseManager = {
       if (btnDisconnect) btnDisconnect.classList.add('hidden');
       if (btnSyncModal) btnSyncModal.classList.add('hidden');
     }
+  },
+
+  // ========================================================
+  // PARTNER CAPITAL INVESTMENTS (Owner-Only Mutation)
+  // Kalash, Sandesh, Yash
+  // ========================================================
+  async getPartnerInvestments() {
+    if (this.db) {
+      try {
+        const doc = await this.db.collection('settings').doc('partner_investments').get();
+        if (doc.exists) {
+          const data = doc.data();
+          localStorage.setItem('gaudhan_partner_investments', JSON.stringify(data));
+          return data;
+        }
+      } catch (e) {
+        console.warn("Firestore getPartnerInvestments error:", e);
+      }
+    }
+
+    // Try SQLite API
+    try {
+      const res = await fetch('/api/partner-investments');
+      const json = await res.json();
+      if (json.success && json.data) {
+        localStorage.setItem('gaudhan_partner_investments', JSON.stringify(json.data));
+        return json.data;
+      }
+    } catch (e) {}
+
+    // Fallback to local cache
+    const cached = localStorage.getItem('gaudhan_partner_investments');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) {}
+    }
+
+    return { kalash: 0, sandesh: 0, yash: 0, notes: '', updated_at: null };
+  },
+
+  async savePartnerInvestments(investData) {
+    // STRICT SECURITY: Only Primary Farm Owner can modify investments
+    if (this.currentUserRole !== 'Owner') {
+      throw new Error("Security Restriction: Only the Primary Farm Owner (kalashshar1234@gmail.com) is authorized to modify investments.");
+    }
+
+    const payload = {
+      kalash: Number(investData.kalash) || 0,
+      sandesh: Number(investData.sandesh) || 0,
+      yash: Number(investData.yash) || 0,
+      notes: String(investData.notes || '').trim(),
+      updated_at: new Date().toISOString(),
+      updated_by: this.currentUser ? this.currentUser.email : 'Primary Owner'
+    };
+
+    // Save to Firestore Cloud
+    if (this.db) {
+      await this.db.collection('settings').doc('partner_investments').set(payload, { merge: true });
+    }
+
+    // Save to local SQLite
+    try {
+      await fetch('/api/partner-investments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {}
+
+    localStorage.setItem('gaudhan_partner_investments', JSON.stringify(payload));
+    return payload;
   },
 
   // Compress image to lightweight Base64 so it can be saved in Firestore for 100% FREE without Blaze upgrade

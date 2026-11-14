@@ -155,6 +155,7 @@ async function loadDashboard() {
     }
 
     renderMetrics(d);
+    loadPartnerInvestments();
     renderFinancialChart(d.chart_data);
     renderDonutChart(d.category_breakdown);
     document.getElementById('period-badge').innerText = d.period_label;
@@ -193,6 +194,195 @@ function renderMetrics(d) {
 
   document.getElementById('card-profit-margin').innerText = `${d.profit_margin_pct}%`;
   document.getElementById('card-avg-fat').innerText = d.avg_fat !== null ? `${d.avg_fat}%` : 'N/A';
+}
+
+// ==========================================
+// FOUNDER CAPITAL INVESTMENTS
+// Partners: Kalash, Sandesh, Yash
+// Input & editing restricted strictly to Owner
+// ==========================================
+let currentPartnerInvestments = { kalash: 0, sandesh: 0, yash: 0, notes: '', updated_at: null };
+
+async function loadPartnerInvestments() {
+  try {
+    let inv = null;
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      inv = await firebaseManager.getPartnerInvestments();
+    } else {
+      const res = await fetch('/api/partner-investments');
+      const json = await res.json();
+      if (json.success) inv = json.data;
+    }
+
+    if (!inv) {
+      const cached = localStorage.getItem('gaudhan_partner_investments');
+      if (cached) {
+        try { inv = JSON.parse(cached); } catch(e) {}
+      }
+    }
+
+    if (inv) {
+      currentPartnerInvestments = inv;
+      renderPartnerInvestments(inv);
+    }
+  } catch (err) {
+    console.error("Error loading partner investments:", err);
+  }
+}
+
+function renderPartnerInvestments(inv) {
+  if (!inv) return;
+  const k = Number(inv.kalash) || 0;
+  const s = Number(inv.sandesh) || 0;
+  const y = Number(inv.yash) || 0;
+  const total = k + s + y;
+
+  const kPct = total > 0 ? Math.round((k / total) * 1000) / 10 : 0;
+  const sPct = total > 0 ? Math.round((s / total) * 1000) / 10 : 0;
+  const yPct = total > 0 ? Math.round((y / total) * 1000) / 10 : 0;
+
+  // Total pool
+  const poolEl = document.getElementById('investment-total-pool');
+  if (poolEl) poolEl.innerText = `₹${formatNumber(total)}`;
+
+  // Kalash
+  const kVal = document.getElementById('invest-val-kalash');
+  const kPctEl = document.getElementById('invest-pct-kalash');
+  const kBar = document.getElementById('invest-bar-kalash');
+  const kLabel = document.getElementById('invest-share-label-kalash');
+  if (kVal) kVal.innerText = `₹${formatNumber(k)}`;
+  if (kPctEl) kPctEl.innerText = `${kPct}%`;
+  if (kBar) kBar.style.width = `${kPct}%`;
+  if (kLabel) kLabel.innerText = `${kPct}% of total capital`;
+
+  // Sandesh
+  const sVal = document.getElementById('invest-val-sandesh');
+  const sPctEl = document.getElementById('invest-pct-sandesh');
+  const sBar = document.getElementById('invest-bar-sandesh');
+  const sLabel = document.getElementById('invest-share-label-sandesh');
+  if (sVal) sVal.innerText = `₹${formatNumber(s)}`;
+  if (sPctEl) sPctEl.innerText = `${sPct}%`;
+  if (sBar) sBar.style.width = `${sPct}%`;
+  if (sLabel) sLabel.innerText = `${sPct}% of total capital`;
+
+  // Yash
+  const yVal = document.getElementById('invest-val-yash');
+  const yPctEl = document.getElementById('invest-pct-yash');
+  const yBar = document.getElementById('invest-bar-yash');
+  const yLabel = document.getElementById('invest-share-label-yash');
+  if (yVal) yVal.innerText = `₹${formatNumber(y)}`;
+  if (yPctEl) yPctEl.innerText = `${yPct}%`;
+  if (yBar) yBar.style.width = `${yPct}%`;
+  if (yLabel) yLabel.innerText = `${yPct}% of total capital`;
+
+  // Multi-colored ratio bar
+  const pK = document.getElementById('invest-pool-kalash');
+  const pS = document.getElementById('invest-pool-sandesh');
+  const pY = document.getElementById('invest-pool-yash');
+  if (pK) pK.style.width = `${kPct}%`;
+  if (pS) pS.style.width = `${sPct}%`;
+  if (pY) pY.style.width = `${yPct}%`;
+
+  const ratioSummary = document.getElementById('invest-ratio-summary');
+  if (ratioSummary) ratioSummary.innerText = `Kalash: ${kPct}% | Sandesh: ${sPct}% | Yash: ${yPct}%`;
+
+  const notesEl = document.getElementById('invest-notes-text');
+  if (notesEl) notesEl.innerText = inv.notes ? `Note: ${inv.notes}` : 'No investment notes recorded';
+
+  const updatedEl = document.getElementById('invest-updated-text');
+  if (updatedEl && inv.updated_at) {
+    const d = new Date(inv.updated_at);
+    updatedEl.innerText = `Updated: ${d.toLocaleDateString()}`;
+  }
+}
+
+function openInvestmentModal() {
+  // STRICT OWNER-ONLY SECURITY VERIFICATION
+  if (typeof firebaseManager !== 'undefined' && firebaseManager.currentUserRole !== 'Owner') {
+    showToast("Security Restriction: Only the Primary Farm Owner (kalashshar1234@gmail.com) is authorized to modify investments.", "error");
+    return;
+  }
+
+  document.getElementById('input-invest-kalash').value = currentPartnerInvestments.kalash || '';
+  document.getElementById('input-invest-sandesh').value = currentPartnerInvestments.sandesh || '';
+  document.getElementById('input-invest-yash').value = currentPartnerInvestments.yash || '';
+  document.getElementById('input-invest-notes').value = currentPartnerInvestments.notes || '';
+
+  calculateModalInvestmentTotal();
+  const modal = document.getElementById('investmentModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeInvestmentModal() {
+  const modal = document.getElementById('investmentModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function calculateModalInvestmentTotal() {
+  const k = parseFloat(document.getElementById('input-invest-kalash').value) || 0;
+  const s = parseFloat(document.getElementById('input-invest-sandesh').value) || 0;
+  const y = parseFloat(document.getElementById('input-invest-yash').value) || 0;
+  const total = k + s + y;
+
+  const totalEl = document.getElementById('modal-invest-total');
+  if (totalEl) totalEl.innerText = `₹${formatNumber(total)}`;
+
+  const kPct = total > 0 ? Math.round((k / total) * 1000) / 10 : 0;
+  const sPct = total > 0 ? Math.round((s / total) * 1000) / 10 : 0;
+  const yPct = total > 0 ? Math.round((y / total) * 1000) / 10 : 0;
+
+  const sharesEl = document.getElementById('modal-invest-shares');
+  if (sharesEl) sharesEl.innerText = `Kalash: ${kPct}% | Sandesh: ${sPct}% | Yash: ${yPct}%`;
+}
+
+async function saveFounderInvestments(e) {
+  if (e) e.preventDefault();
+
+  // STRICT OWNER-ONLY SECURITY VERIFICATION
+  if (typeof firebaseManager !== 'undefined' && firebaseManager.currentUserRole !== 'Owner') {
+    showToast("Security Restriction: Only the Primary Farm Owner (kalashshar1234@gmail.com) is authorized to modify investments.", "error");
+    return;
+  }
+
+  const k = parseFloat(document.getElementById('input-invest-kalash').value) || 0;
+  const s = parseFloat(document.getElementById('input-invest-sandesh').value) || 0;
+  const y = parseFloat(document.getElementById('input-invest-yash').value) || 0;
+  const notes = document.getElementById('input-invest-notes').value.trim();
+
+  const data = { kalash: k, sandesh: s, yash: y, notes: notes };
+  const btn = document.getElementById('btn-save-investments');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+  }
+
+  try {
+    if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
+      await firebaseManager.savePartnerInvestments(data);
+    } else {
+      const res = await fetch('/api/partner-investments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+    }
+
+    currentPartnerInvestments = { ...data, updated_at: new Date().toISOString() };
+    renderPartnerInvestments(currentPartnerInvestments);
+    closeInvestmentModal();
+    showToast("Founder investments updated successfully!", "success");
+  } catch (err) {
+    console.error("Error saving investments:", err);
+    showToast(err.message || "Failed to save investments", "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  }
 }
 
 function renderFinancialChart(chartData) {

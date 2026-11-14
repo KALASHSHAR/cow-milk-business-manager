@@ -232,6 +232,36 @@ def api_check_user_access():
     role = db.get_user_role(email)
     return jsonify({"success": True, "role": role, "authorized": role is not None})
 
+# Partner Capital Investments
+@app.route('/api/partner-investments', methods=['GET'])
+def api_get_partner_investments():
+    try:
+        inv = db.get_partner_investments()
+        return jsonify({"success": True, "data": inv})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/partner-investments', methods=['POST'])
+def api_save_partner_investments():
+    try:
+        req = request.get_json() or {}
+        kalash = float(req.get('kalash', 0) or 0)
+        sandesh = float(req.get('sandesh', 0) or 0)
+        yash = float(req.get('yash', 0) or 0)
+        notes = str(req.get('notes', '') or '')
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        data = {
+            'kalash': kalash,
+            'sandesh': sandesh,
+            'yash': yash,
+            'notes': notes,
+            'updated_at': now_str
+        }
+        saved = db.save_partner_investments(data)
+        return jsonify({"success": True, "data": saved})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory(app.static_folder, path)

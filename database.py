@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import json
 from datetime import datetime, timedelta
 import random
 
@@ -660,4 +661,33 @@ def get_user_role(email):
     if row:
         return row['role']
     return None
+
+def get_partner_investments():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM settings WHERE key = 'partner_investments'")
+    row = cursor.fetchone()
+    conn.close()
+    if row and row['value']:
+        try:
+            return json.loads(row['value'])
+        except Exception:
+            pass
+    return {
+        'kalash': 0,
+        'sandesh': 0,
+        'yash': 0,
+        'notes': '',
+        'updated_at': None
+    }
+
+def save_partner_investments(data):
+    conn = get_db()
+    cursor = conn.cursor()
+    val_json = json.dumps(data)
+    cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('partner_investments', ?)", (val_json,))
+    conn.commit()
+    conn.close()
+    return data
+
 
