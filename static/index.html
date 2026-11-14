@@ -444,11 +444,22 @@
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Receipt / Milk Slip Photo <span class="text-slate-400 font-normal">(Optional)</span></label>
-          <input type="file" id="milk-receipt-file" accept="image/*" capture="environment" onchange="previewSelectedReceipt(event, 'milk-receipt-preview', 'milk-receipt-thumb')" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
-          <div id="milk-receipt-preview" class="hidden mt-2 relative inline-block">
-            <img id="milk-receipt-thumb" src="" class="h-16 w-16 object-cover rounded-lg border border-slate-300 shadow-sm">
-            <button type="button" onclick="clearReceiptInput('milk-receipt-file', 'milk-receipt-preview')" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600"><i class="fa-solid fa-xmark"></i></button>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Receipt / Milk Slip Photo <span class="text-slate-400 font-normal">(Optional)</span></label>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="openCameraModal('milk')" class="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-camera text-emerald-600 text-sm"></i>
+              <span>Take Photo</span>
+            </button>
+            <label class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-folder-open text-slate-500 text-sm"></i>
+              <span>Upload File</span>
+              <input type="file" id="milk-receipt-file" accept="image/*" onchange="previewSelectedReceipt(event, 'milk-receipt-preview', 'milk-receipt-thumb', 'milk-receipt-filename')" class="hidden">
+            </label>
+            <span id="milk-receipt-filename" class="text-xs text-slate-500 font-medium truncate max-w-[170px]"></span>
+          </div>
+          <div id="milk-receipt-preview" class="hidden mt-2.5 relative inline-block">
+            <img id="milk-receipt-thumb" src="" class="h-20 w-20 object-cover rounded-xl border border-slate-300 shadow-sm">
+            <button type="button" onclick="clearReceiptInput('milk-receipt-file', 'milk-receipt-preview', 'milk-receipt-filename')" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600 shadow"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
 
@@ -528,11 +539,22 @@
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Receipt / Invoice Photo <span class="text-slate-400 font-normal">(Optional)</span></label>
-          <input type="file" id="feed-receipt-file" accept="image/*" capture="environment" onchange="previewSelectedReceipt(event, 'feed-receipt-preview', 'feed-receipt-thumb')" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
-          <div id="feed-receipt-preview" class="hidden mt-2 relative inline-block">
-            <img id="feed-receipt-thumb" src="" class="h-16 w-16 object-cover rounded-lg border border-slate-300 shadow-sm">
-            <button type="button" onclick="clearReceiptInput('feed-receipt-file', 'feed-receipt-preview')" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600"><i class="fa-solid fa-xmark"></i></button>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Receipt / Invoice Photo <span class="text-slate-400 font-normal">(Optional)</span></label>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="openCameraModal('feed')" class="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-camera text-amber-600 text-sm"></i>
+              <span>Take Photo</span>
+            </button>
+            <label class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-folder-open text-slate-500 text-sm"></i>
+              <span>Upload File</span>
+              <input type="file" id="feed-receipt-file" accept="image/*" onchange="previewSelectedReceipt(event, 'feed-receipt-preview', 'feed-receipt-thumb', 'feed-receipt-filename')" class="hidden">
+            </label>
+            <span id="feed-receipt-filename" class="text-xs text-slate-500 font-medium truncate max-w-[170px]"></span>
+          </div>
+          <div id="feed-receipt-preview" class="hidden mt-2.5 relative inline-block">
+            <img id="feed-receipt-thumb" src="" class="h-20 w-20 object-cover rounded-xl border border-slate-300 shadow-sm">
+            <button type="button" onclick="clearReceiptInput('feed-receipt-file', 'feed-receipt-preview', 'feed-receipt-filename')" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600 shadow"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
 
@@ -617,11 +639,22 @@
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Receipt / Bill / UPI Screenshot <span class="text-slate-400 font-normal">(Optional)</span></label>
-          <input type="file" id="expense-receipt-file" accept="image/*" capture="environment" onchange="previewSelectedReceipt(event, 'expense-receipt-preview', 'expense-receipt-thumb')" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100">
-          <div id="expense-receipt-preview" class="hidden mt-2 relative inline-block">
-            <img id="expense-receipt-thumb" src="" class="h-16 w-16 object-cover rounded-lg border border-slate-300 shadow-sm">
-            <button type="button" onclick="clearReceiptInput('expense-receipt-file', 'expense-receipt-preview')" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600"><i class="fa-solid fa-xmark"></i></button>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Receipt / Bill / UPI Screenshot <span class="text-slate-400 font-normal">(Optional)</span></label>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="openCameraModal('expense')" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-camera text-rose-600 text-sm"></i>
+              <span>Take Photo</span>
+            </button>
+            <label class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-folder-open text-slate-500 text-sm"></i>
+              <span>Upload File</span>
+              <input type="file" id="expense-receipt-file" accept="image/*" onchange="previewSelectedReceipt(event, 'expense-receipt-preview', 'expense-receipt-thumb', 'expense-receipt-filename')" class="hidden">
+            </label>
+            <span id="expense-receipt-filename" class="text-xs text-slate-500 font-medium truncate max-w-[170px]"></span>
+          </div>
+          <div id="expense-receipt-preview" class="hidden mt-2.5 relative inline-block">
+            <img id="expense-receipt-thumb" src="" class="h-20 w-20 object-cover rounded-xl border border-slate-300 shadow-sm">
+            <button type="button" onclick="clearReceiptInput('expense-receipt-file', 'expense-receipt-preview', 'expense-receipt-filename')" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600 shadow"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
 
@@ -630,9 +663,6 @@
           <button type="button" onclick="closeExpenseModal()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-100">Cancel</button>
           <button type="submit" class="px-6 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-bold shadow-md shadow-rose-900/20">Save Expense</button>
         </div>
-      </form>
-    </div>
-  </div>
       </form>
     </div>
   </div>
@@ -703,6 +733,62 @@
     </div>
   </div>
 
+  <!-- 5. LIVE CAMERA CAPTURE VIEWFINDER MODAL -->
+  <div id="cameraModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[60] flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-900 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-700/60 flex flex-col max-h-[92vh]">
+      <!-- Camera Header -->
+      <div class="px-5 py-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-white flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+          <h3 class="font-bold text-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-camera text-emerald-400"></i> Snap Receipt Photo
+          </h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-flip-camera" onclick="flipCameraFacing()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs flex items-center gap-1 transition-all" title="Flip Camera">
+            <i class="fa-solid fa-camera-rotate text-sm"></i>
+          </button>
+          <button type="button" onclick="closeCameraModal()" class="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm transition-all">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Video Viewfinder & Canvas Preview -->
+      <div class="relative bg-black flex items-center justify-center min-h-[300px] max-h-[55vh] overflow-hidden p-2 flex-1">
+        <video id="cameraVideo" autoplay playsinline class="w-full h-full object-contain rounded-2xl"></video>
+        <canvas id="cameraCanvas" class="hidden w-full h-full object-contain rounded-2xl"></canvas>
+        
+        <!-- Framing overlay -->
+        <div id="cameraGuides" class="absolute inset-5 border-2 border-dashed border-emerald-400/50 rounded-2xl pointer-events-none flex items-center justify-center">
+          <span class="text-[11px] text-white/70 bg-black/60 px-3 py-1 rounded-full backdrop-blur-sm">Align receipt or slip here</span>
+        </div>
+      </div>
+
+      <!-- Camera Action Controls -->
+      <div class="p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-center flex-shrink-0">
+        <!-- Live mode button -->
+        <div id="cameraLiveControls" class="flex items-center justify-between w-full px-4">
+          <button type="button" onclick="closeCameraModal()" class="text-xs text-slate-400 hover:text-white font-semibold">Cancel</button>
+          <button type="button" onclick="captureSnapshot()" class="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 border-4 border-slate-900 ring-4 ring-emerald-500/50 text-white text-2xl flex items-center justify-center shadow-lg transition-all" title="Snap Photo">
+            <i class="fa-solid fa-camera"></i>
+          </button>
+          <div class="w-10"></div>
+        </div>
+
+        <!-- Review mode buttons (after snapping) -->
+        <div id="cameraReviewControls" class="hidden flex items-center justify-center gap-3 w-full">
+          <button type="button" onclick="retakeSnapshot()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+            <i class="fa-solid fa-rotate-left"></i> Retake
+          </button>
+          <button type="button" onclick="confirmSnapshot()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition-all">
+            <i class="fa-solid fa-check"></i> Use This Photo
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- RECEIPT VIEW LIGHTBOX MODAL -->
   <div id="receiptModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden" onclick="closeReceiptModal()">
     <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all" onclick="event.stopPropagation()">
@@ -730,7 +816,7 @@
   </div>
 
   <!-- Scripts -->
-  <script src="firebaseSync.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script src="firebaseSync.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

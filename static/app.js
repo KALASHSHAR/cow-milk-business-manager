@@ -652,11 +652,155 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ----------------- RECEIPT UPLOADS & PREVIEW ----------------- //
+// ----------------- RECEIPT CAMERA & FILE UPLOAD ----------------- //
 
-function previewSelectedReceipt(e, previewBoxId, imgId) {
+let cameraStream = null;
+let activeTargetModal = 'milk'; // 'milk', 'feed', or 'expense'
+let cameraFacing = 'environment'; // 'environment' (rear) or 'user' (front)
+let capturedBlob = null;
+let activeCapturedFiles = { milk: null, feed: null, expense: null };
+
+async function openCameraModal(target = 'milk') {
+  activeTargetModal = target;
+  capturedBlob = null;
+
+  const modal = document.getElementById('cameraModal');
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  const guides = document.getElementById('cameraGuides');
+  const liveControls = document.getElementById('cameraLiveControls');
+  const reviewControls = document.getElementById('cameraReviewControls');
+
+  video.classList.remove('hidden');
+  canvas.classList.add('hidden');
+  if (guides) guides.classList.remove('hidden');
+  liveControls.classList.remove('hidden');
+  reviewControls.classList.add('hidden');
+
+  modal.classList.remove('hidden');
+  await startCameraStream();
+}
+
+async function startCameraStream() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+  }
+
+  const video = document.getElementById('cameraVideo');
+
+  try {
+    const constraints = {
+      video: {
+        facingMode: cameraFacing,
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    };
+
+    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = cameraStream;
+    await video.play();
+  } catch (err) {
+    console.warn("Direct rear camera failed, trying fallback constraints:", err);
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      video.srcObject = cameraStream;
+      await video.play();
+    } catch (err2) {
+      alert("Unable to access camera: " + (err2.message || 'Please check browser camera permissions.'));
+      closeCameraModal();
+    }
+  }
+}
+
+async function flipCameraFacing() {
+  cameraFacing = cameraFacing === 'environment' ? 'user' : 'environment';
+  await startCameraStream();
+}
+
+function captureSnapshot() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  const guides = document.getElementById('cameraGuides');
+  const liveControls = document.getElementById('cameraLiveControls');
+  const reviewControls = document.getElementById('cameraReviewControls');
+
+  const width = video.videoWidth || 640;
+  const height = video.videoHeight || 480;
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, width, height);
+
+  canvas.toBlob(blob => {
+    capturedBlob = blob;
+  }, 'image/jpeg', 0.92);
+
+  video.classList.add('hidden');
+  canvas.classList.remove('hidden');
+  if (guides) guides.classList.add('hidden');
+  liveControls.classList.add('hidden');
+  reviewControls.classList.remove('hidden');
+}
+
+function retakeSnapshot() {
+  capturedBlob = null;
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  const guides = document.getElementById('cameraGuides');
+  const liveControls = document.getElementById('cameraLiveControls');
+  const reviewControls = document.getElementById('cameraReviewControls');
+
+  video.classList.remove('hidden');
+  canvas.classList.add('hidden');
+  if (guides) guides.classList.remove('hidden');
+  liveControls.classList.remove('hidden');
+  reviewControls.classList.add('hidden');
+}
+
+function confirmSnapshot() {
+  if (!capturedBlob) return;
+
+  const filename = `camera_receipt_${Date.now()}.jpg`;
+  const file = new File([capturedBlob], filename, { type: 'image/jpeg' });
+  activeCapturedFiles[activeTargetModal] = file;
+
+  // Show preview in target modal
+  const previewBox = document.getElementById(`${activeTargetModal}-receipt-preview`);
+  const thumb = document.getElementById(`${activeTargetModal}-receipt-thumb`);
+  const nameLabel = document.getElementById(`${activeTargetModal}-receipt-filename`);
+
+  const previewUrl = URL.createObjectURL(capturedBlob);
+  if (thumb) thumb.src = previewUrl;
+  if (previewBox) previewBox.classList.remove('hidden');
+  if (nameLabel) nameLabel.innerText = '📸 Photo Captured';
+
+  closeCameraModal();
+  showToast('Receipt photo captured!', 'success');
+}
+
+function closeCameraModal() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  document.getElementById('cameraModal').classList.add('hidden');
+}
+
+function previewSelectedReceipt(e, previewBoxId, imgId, nameId) {
   const file = e.target.files[0];
   if (file) {
+    // uploaded file replaces camera snapshot
+    const target = previewBoxId.split('-')[0];
+    activeCapturedFiles[target] = null;
+
+    if (nameId) {
+      document.getElementById(nameId).innerText = file.name;
+    }
+
     const reader = new FileReader();
     reader.onload = function(evt) {
       document.getElementById(imgId).src = evt.target.result;
@@ -666,18 +810,26 @@ function previewSelectedReceipt(e, previewBoxId, imgId) {
   }
 }
 
-function clearReceiptInput(inputId, previewBoxId) {
+function clearReceiptInput(inputId, previewBoxId, nameId) {
+  const target = inputId.split('-')[0];
+  activeCapturedFiles[target] = null;
+
   document.getElementById(inputId).value = '';
   document.getElementById(previewBoxId).classList.add('hidden');
+  if (nameId) {
+    document.getElementById(nameId).innerText = '';
+  }
 }
 
-async function uploadReceiptFile(fileInputId) {
-  const fileInput = document.getElementById(fileInputId);
-  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+async function uploadReceiptFile(fileInputId, target = 'milk') {
+  // Check if camera captured file exists, or file input has file
+  const file = activeCapturedFiles[target] || (document.getElementById(fileInputId)?.files?.[0]);
+  if (!file) {
     return null;
   }
+
   const formData = new FormData();
-  formData.append('receipt', fileInput.files[0]);
+  formData.append('receipt', file);
 
   try {
     const res = await fetch('/api/upload-receipt', {
@@ -720,7 +872,7 @@ async function submitMilkSale(e) {
   }
 
   const fileInput = document.getElementById('milk-receipt-file');
-  const receiptFile = fileInput && fileInput.files ? fileInput.files[0] : null;
+  const receiptFile = activeCapturedFiles.milk || (fileInput && fileInput.files ? fileInput.files[0] : null);
 
   const payload = {
     date: document.getElementById('milk-date').value,
@@ -746,7 +898,7 @@ async function submitMilkSale(e) {
     }
 
     if (!savedToCloud) {
-      let receiptFilename = await uploadReceiptFile('milk-receipt-file');
+      let receiptFilename = await uploadReceiptFile('milk-receipt-file', 'milk');
       payload.receipt_image = receiptFilename;
 
       const res = await fetch('/api/milk', {
@@ -761,7 +913,8 @@ async function submitMilkSale(e) {
 
     closeMilkModal();
     document.getElementById('milk-quantity').value = '';
-    clearReceiptInput('milk-receipt-file', 'milk-receipt-preview');
+    clearReceiptInput('milk-receipt-file', 'milk-receipt-preview', 'milk-receipt-filename');
+    activeCapturedFiles.milk = null;
     loadDashboard();
     loadMilkTable();
   } catch (err) {
@@ -785,7 +938,7 @@ async function submitFeedPurchase(e) {
   }
 
   const fileInput = document.getElementById('feed-receipt-file');
-  const receiptFile = fileInput && fileInput.files ? fileInput.files[0] : null;
+  const receiptFile = activeCapturedFiles.feed || (fileInput && fileInput.files ? fileInput.files[0] : null);
 
   const payload = {
     date: document.getElementById('feed-date').value,
@@ -811,7 +964,7 @@ async function submitFeedPurchase(e) {
     }
 
     if (!savedToCloud) {
-      let receiptFilename = await uploadReceiptFile('feed-receipt-file');
+      let receiptFilename = await uploadReceiptFile('feed-receipt-file', 'feed');
       payload.receipt_image = receiptFilename;
 
       const res = await fetch('/api/feed', {
@@ -828,7 +981,8 @@ async function submitFeedPurchase(e) {
     document.getElementById('feed-item').value = '';
     document.getElementById('feed-cost').value = '';
     document.getElementById('feed-quantity').value = '';
-    clearReceiptInput('feed-receipt-file', 'feed-receipt-preview');
+    clearReceiptInput('feed-receipt-file', 'feed-receipt-preview', 'feed-receipt-filename');
+    activeCapturedFiles.feed = null;
     loadDashboard();
     loadFeedTable();
     loadExpensesTable();
@@ -853,7 +1007,7 @@ async function submitExpense(e) {
   }
 
   const fileInput = document.getElementById('expense-receipt-file');
-  const receiptFile = fileInput && fileInput.files ? fileInput.files[0] : null;
+  const receiptFile = activeCapturedFiles.expense || (fileInput && fileInput.files ? fileInput.files[0] : null);
 
   const payload = {
     type: document.querySelector('input[name="expense_nature"]:checked').value,
@@ -877,7 +1031,7 @@ async function submitExpense(e) {
     }
 
     if (!savedToCloud) {
-      let receiptFilename = await uploadReceiptFile('expense-receipt-file');
+      let receiptFilename = await uploadReceiptFile('expense-receipt-file', 'expense');
       payload.receipt_image = receiptFilename;
 
       const res = await fetch('/api/expenses', {
@@ -893,7 +1047,8 @@ async function submitExpense(e) {
     closeExpenseModal();
     document.getElementById('expense-description').value = '';
     document.getElementById('expense-amount').value = '';
-    clearReceiptInput('expense-receipt-file', 'expense-receipt-preview');
+    clearReceiptInput('expense-receipt-file', 'expense-receipt-preview', 'expense-receipt-filename');
+    activeCapturedFiles.expense = null;
     loadDashboard();
     loadExpensesTable();
   } catch (err) {
