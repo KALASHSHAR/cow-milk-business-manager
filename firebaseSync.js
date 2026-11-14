@@ -427,18 +427,27 @@ const firebaseManager = {
         if (unauthModal) unauthModal.classList.add('hidden');
       }
 
-      // ONLY the Primary Farm Owner can see and use the Manage Staff buttons
+      // ONLY the Primary Farm Owner can see and use the Manage Staff and Admin menus
       const isOwner = role === 'Owner';
       const manageMenuBtn = document.getElementById('btn-manage-access-menu');
       const moreManageBtn = document.getElementById('btn-more-manage-access');
       const mobileMoreAccessBtn = document.getElementById('btn-mobile-more-access');
+      const moreActionsDropdown = document.getElementById('moreActionsDropdown');
+      const cloudStatusBtn = document.getElementById('btn-cloud-status');
+
       if (manageMenuBtn) manageMenuBtn.style.display = isOwner ? 'flex' : 'none';
       if (moreManageBtn) moreManageBtn.style.display = isOwner ? 'flex' : 'none';
       if (mobileMoreAccessBtn) mobileMoreAccessBtn.style.display = isOwner ? 'flex' : 'none';
+      if (moreActionsDropdown) moreActionsDropdown.style.display = isOwner ? 'inline-block' : 'none';
+      if (cloudStatusBtn) cloudStatusBtn.style.display = isOwner ? 'flex' : 'none';
     } else {
       if (btnLogin) btnLogin.classList.remove('hidden');
       if (badge) badge.classList.add('hidden');
       if (unauthModal) unauthModal.classList.add('hidden');
+      const moreActionsDropdown = document.getElementById('moreActionsDropdown');
+      const cloudStatusBtn = document.getElementById('btn-cloud-status');
+      if (moreActionsDropdown) moreActionsDropdown.style.display = 'none';
+      if (cloudStatusBtn) cloudStatusBtn.style.display = 'none';
     }
   },
 

@@ -1380,6 +1380,10 @@ function disconnectFirebase() {
 }
 
 async function syncLocalToFirebase() {
+  if (firebaseManager.currentUserRole !== 'Owner') {
+    showToast('Permission Denied: Only the Farm Owner can sync cloud data.', 'error');
+    return;
+  }
   if (!firebaseManager.connected) {
     showToast('Please connect Firebase Cloud first', 'error');
     return;
@@ -1427,9 +1431,13 @@ async function syncLocalToFirebase() {
   }
 }
 
-// ----------------- DEMO SEED & RESET ----------------- //
+// ----------------- DEMO SEED & RESET (Owner Only) ----------------- //
 
 async function seedDemoData() {
+  if (firebaseManager.currentUserRole !== 'Owner') {
+    showToast('Permission Denied: Only the Farm Owner can seed demo data.', 'error');
+    return;
+  }
   if (!confirm('Load 30 days of realistic sample dairy data (milk sales, feed, vet, equipment)?')) return;
   try {
     const res = await fetch('/api/seed', { method: 'POST' });
@@ -1447,6 +1455,10 @@ async function seedDemoData() {
 }
 
 async function confirmResetData() {
+  if (firebaseManager.currentUserRole !== 'Owner') {
+    showToast('Permission Denied: Only the Farm Owner can reset farm data.', 'error');
+    return;
+  }
   if (!confirm('⚠️ WARNING: This will permanently delete ALL milk sales, feed purchases, and expenses! Are you sure?')) return;
   try {
     const res = await fetch('/api/reset', { method: 'POST' });

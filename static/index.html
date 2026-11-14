@@ -118,7 +118,7 @@
           </div>
         </div>
 
-        <button onclick="openFirebaseModal()" id="btn-cloud-status" class="bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-300/30 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all">
+        <button onclick="openFirebaseModal()" id="btn-cloud-status" class="hidden bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-300/30 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all">
           <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
           <span id="cloud-status-text" class="hidden sm:inline">Connect Firebase Cloud</span>
           <span class="sm:hidden text-[11px] font-bold">Cloud</span>
@@ -140,7 +140,8 @@
           </button>
         </div>
 
-        <div class="relative inline-block text-left" id="moreActionsDropdown">
+        <!-- 3-Dots Admin Menu (Strictly Owner Only) -->
+        <div class="hidden relative inline-block text-left" id="moreActionsDropdown">
           <button onclick="toggleMoreMenu()" class="bg-white/15 hover:bg-white/25 text-white p-2 rounded-lg text-sm transition-all border border-white/20">
             <i class="fa-solid fa-ellipsis-vertical px-1"></i>
           </button>
@@ -1269,7 +1270,7 @@
   </nav>
 
   <!-- Scripts -->
-  <script src="firebaseSync.js?v=13"></script>
-  <script src="app.js?v=13"></script>
+  <script src="firebaseSync.js?v=14"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>
