@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#064e3b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>GauDhan - Cow Milk Business & Dairy Transaction Manager</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Firebase SDK (Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            dairy: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            },
+            milk: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              800: '#1e293b',
+              900: '#0f172a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 text-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 text-emerald-300 text-2xl flex items-center justify-center shadow-inner">
+          <i class="fa-solid fa-cow"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
+              GauDhan <span class="text-xs font-semibold uppercase tracking-wider bg-emerald-500/30 text-emerald-200 px-2.5 py-0.5 rounded-full border border-emerald-400/30">Dairy ERP</span>
+            </h1>
+          </div>
+          <p class="text-xs text-emerald-200/80">Cow Milk Sales, Feed, Expenses & Profit Tracker</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons & Auth -->
+      <div class="flex items-center gap-2">
+        <!-- Google Sign-In Button -->
+        <button id="btn-google-login" onclick="openLoginModal()" class="bg-white hover:bg-slate-100 text-slate-800 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm border border-slate-200 transition-all active:scale-95">
+          <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span class="hidden sm:inline">Google Login</span>
+          <span class="sm:hidden font-bold">Login</span>
+        </button>
+
+        <!-- Logged-in User Profile Dropdown Badge -->
+        <div id="userProfileBadge" class="hidden relative inline-block">
+          <button type="button" onclick="toggleUserDropdown()" class="flex items-center gap-1.5 sm:gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl transition-all">
+            <img id="userAvatarImg" src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" class="w-6 h-6 rounded-full border border-white/40 object-cover" alt="User">
+            <div class="text-left hidden sm:block leading-tight">
+              <span id="userDisplayName" class="text-xs font-bold block text-white truncate max-w-[90px]">User</span>
+              <span id="userRoleBadge" class="text-[9px] font-semibold text-emerald-300 uppercase tracking-wider">Owner</span>
+            </div>
+            <i class="fa-solid fa-chevron-down text-[10px] text-white/70 ml-0.5"></i>
+          </button>
+          <div id="userDropdownMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl py-2 z-50 text-slate-700 border border-slate-100 text-xs">
+            <div class="px-4 py-2 border-b border-slate-100">
+              <p id="userDropdownEmail" class="font-bold text-slate-800 truncate">user@gmail.com</p>
+              <span id="userDropdownRole" class="inline-block mt-0.5 px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px]">👑 Farm Owner</span>
+            </div>
+            <button id="btn-manage-access-menu" onclick="openAccessModal()" class="w-full text-left px-4 py-2 hover:bg-indigo-50 flex items-center gap-2 text-indigo-700 font-semibold">
+              <i class="fa-solid fa-user-shield text-indigo-600"></i> Manage Staff & Access
+            </button>
+            <button onclick="handleGoogleSignOut()" class="w-full text-left px-4 py-2 hover:bg-rose-50 flex items-center gap-2 text-rose-600 font-semibold">
+              <i class="fa-solid fa-arrow-right-from-bracket text-rose-500"></i> Sign Out
+            </button>
+          </div>
+        </div>
+
+        <button onclick="openFirebaseModal()" id="btn-cloud-status" class="bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-300/30 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all">
+          <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="cloud-status-text" class="hidden sm:inline">Connect Firebase Cloud</span>
+          <span class="sm:hidden text-[11px] font-bold">Cloud</span>
+        </button>
+
+        <!-- Desktop Action Buttons (Mobile gets Bottom Action Dock) -->
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMilkModal()" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 transition-all text-white px-3.5 py-2 rounded-lg text-sm font-semibold flex items-center shadow-md shadow-emerald-950/20 gap-2">
+            <i class="fa-solid fa-plus-circle text-white"></i>
+            <span>Add Daily Milk</span>
+          </button>
+          <button onclick="openFeedModal()" class="bg-amber-500 hover:bg-amber-600 active:scale-95 transition-all text-white px-3.5 py-2 rounded-lg text-sm font-semibold flex items-center shadow-md shadow-amber-950/20 gap-2">
+            <i class="fa-solid fa-wheat-awn text-white"></i>
+            <span>Add Cow Feed</span>
+          </button>
+          <button onclick="openExpenseModal()" class="bg-rose-500 hover:bg-rose-600 active:scale-95 transition-all text-white px-3.5 py-2 rounded-lg text-sm font-semibold flex items-center shadow-md shadow-rose-950/20 gap-2">
+            <i class="fa-solid fa-receipt text-white"></i>
+            <span>Add Expense</span>
+          </button>
+        </div>
+
+        <div class="relative inline-block text-left" id="moreActionsDropdown">
+          <button onclick="toggleMoreMenu()" class="bg-white/15 hover:bg-white/25 text-white p-2 rounded-lg text-sm transition-all border border-white/20">
+            <i class="fa-solid fa-ellipsis-vertical px-1"></i>
+          </button>
+          <div id="moreMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl py-2 z-50 text-slate-700 border border-slate-100 text-sm">
+            <button id="btn-more-manage-access" onclick="openAccessModal()" class="w-full text-left px-4 py-2 hover:bg-indigo-50 flex items-center gap-2.5 text-indigo-700 font-semibold">
+              <i class="fa-solid fa-user-shield text-indigo-600"></i> Manage Staff & Access
+            </button>
+            <button onclick="openFirebaseModal()" class="w-full text-left px-4 py-2 hover:bg-amber-50 flex items-center gap-2.5 text-amber-700">
+              <i class="fa-solid fa-cloud text-amber-500"></i> Firebase Cloud Settings
+            </button>
+            <button onclick="syncLocalToFirebase()" class="w-full text-left px-4 py-2 hover:bg-emerald-50 flex items-center gap-2.5 text-emerald-700">
+              <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i> Sync Local Data to Cloud
+            </button>
+            <hr class="my-1 border-slate-100">
+            <a href="/api/export/csv?type=milk" class="block px-4 py-2 hover:bg-emerald-50 flex items-center gap-2.5 text-slate-700">
+              <i class="fa-solid fa-file-csv text-emerald-600"></i> Export Milk Sales (CSV)
+            </a>
+            <a href="/api/export/csv?type=expenses" class="block px-4 py-2 hover:bg-rose-50 flex items-center gap-2.5 text-slate-700">
+              <i class="fa-solid fa-file-csv text-rose-600"></i> Export Expenses (CSV)
+            </a>
+            <hr class="my-1 border-slate-100">
+            <button onclick="seedDemoData()" class="w-full text-left px-4 py-2 hover:bg-amber-50 flex items-center gap-2.5 text-amber-700">
+              <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> Load 30-Day Demo Data
+            </button>
+            <button onclick="confirmResetData()" class="w-full text-left px-4 py-2 hover:bg-rose-50 flex items-center gap-2.5 text-rose-600">
+              <i class="fa-solid fa-trash-can text-rose-500"></i> Reset / Clear All Data
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 w-full flex-1 pb-24 md:pb-8">
+
+    <!-- LEVEL CONTROLS (DAILY / MONTHLY / YEARLY) & FILTER BAR -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-3 sm:p-4 mb-4 sm:mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+      <!-- Period Selector Tabs -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl self-stretch sm:self-start md:self-auto border border-slate-200 overflow-x-auto no-scrollbar">
+        <button id="btn-tab-daily" onclick="setViewLevel('daily')" class="flex-1 sm:flex-none text-center px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap">
+          <i class="fa-regular fa-calendar-check mr-1 sm:mr-1.5"></i>Daily
+        </button>
+        <button id="btn-tab-monthly" onclick="setViewLevel('monthly')" class="flex-1 sm:flex-none text-center px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white text-emerald-700 shadow-sm whitespace-nowrap">
+          <i class="fa-regular fa-calendar-days mr-1 sm:mr-1.5"></i>Monthly
+        </button>
+        <button id="btn-tab-yearly" onclick="setViewLevel('yearly')" class="flex-1 sm:flex-none text-center px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap">
+          <i class="fa-regular fa-calendar mr-1 sm:mr-1.5"></i>Yearly
+        </button>
+        <button id="btn-tab-custom" onclick="setViewLevel('custom')" class="flex-1 sm:flex-none text-center px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap">
+          <i class="fa-solid fa-sliders mr-1 sm:mr-1.5"></i>Custom
+        </button>
+      </div>
+          <i class="fa-regular fa-calendar-check mr-1.5"></i>Daily
+        </button>
+        <button id="btn-tab-monthly" onclick="setViewLevel('monthly')" class="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-white text-emerald-700 shadow-sm">
+          <i class="fa-regular fa-calendar-days mr-1.5"></i>Monthly
+        </button>
+        <button id="btn-tab-yearly" onclick="setViewLevel('yearly')" class="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900">
+          <i class="fa-regular fa-calendar mr-1.5"></i>Yearly
+        </button>
+        <button id="btn-tab-custom" onclick="setViewLevel('custom')" class="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900">
+          <i class="fa-solid fa-sliders mr-1.5"></i>Custom
+        </button>
+      </div>
+
+      <!-- Date Navigator controls -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Daily Selector -->
+        <div id="filter-daily" class="hidden flex items-center gap-2">
+          <button onclick="changeDay(-1)" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"><i class="fa-solid fa-chevron-left"></i></button>
+          <input type="date" id="input-daily-date" onchange="loadDashboard()" class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+          <button onclick="changeDay(1)" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"><i class="fa-solid fa-chevron-right"></i></button>
+          <button onclick="setToday()" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-semibold px-2.5 py-1.5 rounded-lg">Today</button>
+        </div>
+
+        <!-- Monthly Selector -->
+        <div id="filter-monthly" class="flex items-center gap-2">
+          <button onclick="changeMonth(-1)" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"><i class="fa-solid fa-chevron-left"></i></button>
+          <input type="month" id="input-monthly-date" onchange="loadDashboard()" class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+          <button onclick="changeMonth(1)" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"><i class="fa-solid fa-chevron-right"></i></button>
+          <button onclick="setCurrentMonth()" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-semibold px-2.5 py-1.5 rounded-lg">This Month</button>
+        </div>
+
+        <!-- Yearly Selector -->
+        <div id="filter-yearly" class="hidden flex items-center gap-2">
+          <button onclick="changeYear(-1)" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"><i class="fa-solid fa-chevron-left"></i></button>
+          <select id="select-year" onchange="loadDashboard()" class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+          </select>
+          <button onclick="changeYear(1)" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+
+        <!-- Custom Date Range -->
+        <div id="filter-custom" class="hidden flex items-center gap-2 flex-wrap">
+          <input type="date" id="input-custom-start" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+          <span class="text-xs text-slate-400">to</span>
+          <input type="date" id="input-custom-end" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium">
+          <button onclick="loadDashboard()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold">Apply</button>
+        </div>
+
+        <button onclick="loadDashboard(); loadRecentTables();" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600" title="Refresh Dashboard">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI OVERVIEW CARDS -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-4 sm:mb-6">
+      <!-- 1. Total Revenue -->
+      <div class="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-slate-200/80 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">Revenue</p>
+            <h3 id="card-revenue" class="text-base sm:text-2xl font-black text-emerald-600 mt-0.5 sm:mt-1">₹0.00</h3>
+          </div>
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center text-sm sm:text-xl shadow-sm flex-shrink-0">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+          </div>
+        </div>
+        <div class="mt-2.5 sm:mt-3.5 pt-2 sm:pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between text-[10px] sm:text-xs text-slate-500 gap-0.5">
+          <span>Milk: <strong id="card-liters" class="text-slate-800">0 L</strong></span>
+          <span>Rate: <strong id="card-avg-price" class="text-slate-800">₹0/L</strong></span>
+        </div>
+      </div>
+
+      <!-- 2. Operational Expenditure (OPEX) -->
+      <div class="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-slate-200/80 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">Expenses</p>
+            <h3 id="card-opex" class="text-base sm:text-2xl font-black text-rose-600 mt-0.5 sm:mt-1">₹0.00</h3>
+          </div>
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center text-sm sm:text-xl shadow-sm flex-shrink-0">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+          </div>
+        </div>
+        <div class="mt-2.5 sm:mt-3.5 pt-2 sm:pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between text-[10px] sm:text-xs text-slate-500 gap-0.5">
+          <span>Feed: <strong id="card-feed-cost" class="text-slate-800">₹0</strong></span>
+          <span>Per Litre: <strong id="card-feed-per-l" class="text-slate-800">₹0/L</strong></span>
+        </div>
+      </div>
+
+      <!-- 3. Capital Investment (CAPEX) -->
+      <div class="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-slate-200/80 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">Investments</p>
+            <h3 id="card-investment" class="text-base sm:text-2xl font-black text-blue-600 mt-0.5 sm:mt-1">₹0.00</h3>
+          </div>
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center text-sm sm:text-xl shadow-sm flex-shrink-0">
+            <i class="fa-solid fa-landmark"></i>
+          </div>
+        </div>
+        <div class="mt-2.5 sm:mt-3.5 pt-2 sm:pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between text-[10px] sm:text-xs text-slate-500 gap-0.5">
+          <span>Assets & Cattle</span>
+          <span class="text-blue-700 font-medium">Long-term</span>
+        </div>
+      </div>
+
+      <!-- 4. Net Profit / Loss -->
+      <div class="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-slate-200/80 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">Net Profit</p>
+            <h3 id="card-profit" class="text-base sm:text-2xl font-black mt-0.5 sm:mt-1 text-slate-900">₹0.00</h3>
+          </div>
+          <div id="card-profit-icon-box" class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center text-sm sm:text-xl shadow-sm flex-shrink-0">
+            <i id="card-profit-icon" class="fa-solid fa-arrow-trend-up"></i>
+          </div>
+        </div>
+        <div class="mt-2.5 sm:mt-3.5 pt-2 sm:pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between text-[10px] sm:text-xs text-slate-500 gap-0.5">
+          <span>Margin: <strong id="card-profit-margin" class="text-slate-800">0%</strong></span>
+          <span>Fat: <strong id="card-avg-fat" class="text-emerald-700">--%</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHARTS SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <!-- Main Trend Chart: Revenue vs Operational Expenses vs Net Profit -->
+      <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 mb-4 gap-2">
+          <div>
+            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-chart-column text-emerald-600"></i> Financial Performance Trend
+            </h2>
+            <p class="text-xs text-slate-500" id="chart-subtitle">Revenue, Expenses and Production volume</p>
+          </div>
+          <span id="period-badge" class="self-start text-xs font-medium px-3 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+            Current View
+          </span>
+        </div>
+        <div class="relative h-72 sm:h-80 w-full">
+          <canvas id="financialTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Expense Breakdown Donut Chart -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col">
+        <div class="pb-4 border-b border-slate-100 mb-4">
+          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-amber-500"></i> Expense Distribution
+          </h2>
+          <p class="text-xs text-slate-500">Cow Feed vs Labor vs Vet vs Others</p>
+        </div>
+        <div class="relative h-60 w-full my-auto flex items-center justify-center">
+          <canvas id="expenseDonutChart"></canvas>
+        </div>
+        <div id="expense-legend-summary" class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 flex flex-col gap-1.5 max-h-32 overflow-y-auto">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- RECENT TRANSACTIONS TABS -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden mb-10">
+      <!-- Tabs Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 bg-slate-50/70 px-3 sm:px-4 pt-2 sm:pt-3 gap-2">
+        <div class="flex space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+          <button id="tab-btn-milk" onclick="switchTableTab('milk')" class="px-3 sm:px-4 py-2 sm:py-2.5 font-bold text-xs sm:text-sm border-b-2 border-emerald-600 text-emerald-800 transition-all flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-bottle-water"></i> Milk Sales
+          </button>
+          <button id="tab-btn-feed" onclick="switchTableTab('feed')" class="px-3 sm:px-4 py-2 sm:py-2.5 font-bold text-xs sm:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-wheat-awn"></i> Cow Feed
+          </button>
+          <button id="tab-btn-expenses" onclick="switchTableTab('expenses')" class="px-3 sm:px-4 py-2 sm:py-2.5 font-bold text-xs sm:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-receipt"></i> Expenses & Capex
+          </button>
+        </div>
+        <div class="pb-2 w-full sm:w-auto">
+          <input type="text" id="tableSearch" onkeyup="filterCurrentTable()" placeholder="Quick search transactions..." class="w-full sm:w-60 text-xs px-3 py-1.5 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
+        </div>
+      </div>
+
+      <!-- Tab Content 1: Milk Sales -->
+      <div id="table-content-milk" class="p-3 sm:p-4">
+        <!-- Mobile Card View -->
+        <div id="milk-cards-body" class="block md:hidden space-y-2.5">
+          <div class="py-6 text-center text-slate-400 text-xs">Loading milk records...</div>
+        </div>
+
+        <!-- Desktop Table View -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase text-slate-400 font-bold border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">Date</th>
+                <th class="py-3 px-4">Shift</th>
+                <th class="py-3 px-4">Liters</th>
+                <th class="py-3 px-4">Rate (₹/L)</th>
+                <th class="py-3 px-4">Fat %</th>
+                <th class="py-3 px-4">Total Sale</th>
+                <th class="py-3 px-4">Buyer / Customer</th>
+                <th class="py-3 px-4">Receipt</th>
+                <th class="py-3 px-4">Notes</th>
+                <th class="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="milk-table-body" class="divide-y divide-slate-100">
+              <tr>
+                <td colspan="10" class="py-8 text-center text-slate-400">Loading milk records...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab Content 2: Feed Purchases -->
+      <div id="table-content-feed" class="p-3 sm:p-4 hidden">
+        <!-- Mobile Card View -->
+        <div id="feed-cards-body" class="block md:hidden space-y-2.5">
+          <div class="py-6 text-center text-slate-400 text-xs">Loading feed records...</div>
+        </div>
+
+        <!-- Desktop Table View -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase text-slate-400 font-bold border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">Date</th>
+                <th class="py-3 px-4">Feed Type</th>
+                <th class="py-3 px-4">Item Name / Brand</th>
+                <th class="py-3 px-4">Quantity (Kg)</th>
+                <th class="py-3 px-4">Cost (₹)</th>
+                <th class="py-3 px-4">Supplier / Vendor</th>
+                <th class="py-3 px-4">Receipt</th>
+                <th class="py-3 px-4">Notes</th>
+                <th class="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="feed-table-body" class="divide-y divide-slate-100">
+              <tr>
+                <td colspan="9" class="py-8 text-center text-slate-400">Loading feed records...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab Content 3: Expenses & Capital Investments -->
+      <div id="table-content-expenses" class="p-3 sm:p-4 hidden">
+        <!-- Mobile Card View -->
+        <div id="expenses-cards-body" class="block md:hidden space-y-2.5">
+          <div class="py-6 text-center text-slate-400 text-xs">Loading expense records...</div>
+        </div>
+
+        <!-- Desktop Table View -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase text-slate-400 font-bold border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">Date</th>
+                <th class="py-3 px-4">Type</th>
+                <th class="py-3 px-4">Category</th>
+                <th class="py-3 px-4">Description</th>
+                <th class="py-3 px-4">Amount (₹)</th>
+                <th class="py-3 px-4">Payment Mode</th>
+                <th class="py-3 px-4">Receipt</th>
+                <th class="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="expenses-table-body" class="divide-y divide-slate-100">
+              <tr>
+                <td colspan="8" class="py-8 text-center text-slate-400">Loading expense records...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-auto text-center text-xs text-slate-400">
+    <p>🐄 GauDhan Dairy Farm Management • Designed for Cow Milk Business Transactions & Financial Analytics</p>
+  </footer>
+
+  <!-- ======================= MODALS ======================= -->
+
+  <!-- 1. ADD MILK SALE MODAL -->
+  <div id="milkModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all modal-sheet-enter max-h-[94vh] sm:max-h-[92vh] flex flex-col">
+      <div class="bg-gradient-to-r from-emerald-600 to-teal-700 px-5 sm:px-6 py-3 sm:py-3.5 text-white flex flex-col flex-shrink-0">
+        <div class="w-10 h-1 bg-white/40 rounded-full mx-auto mb-2 sm:hidden"></div>
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-base sm:text-lg flex items-center gap-2">
+            <i class="fa-solid fa-bottle-water"></i> Record Daily Milk Sale
+          </h3>
+          <button onclick="closeMilkModal()" class="text-white/80 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <form id="form-milk" onsubmit="submitMilkSale(event)" class="p-4 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
+            <input type="date" id="milk-date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Shift</label>
+            <select id="milk-shift" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+              <option value="Morning">Morning ☀️</option>
+              <option value="Evening">Evening 🌙</option>
+              <option value="Full Day">Full Day</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Milk Quantity (Liters) *</label>
+            <input type="number" inputmode="decimal" step="0.1" min="0.1" id="milk-quantity" required oninput="calculateMilkTotal()" placeholder="e.g. 45.5" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-semibold text-emerald-800">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Price per Liter (₹) *</label>
+            <input type="number" inputmode="decimal" step="0.5" min="1" id="milk-price" required oninput="calculateMilkTotal()" value="48" placeholder="e.g. 48" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-semibold text-emerald-800">
+          </div>
+        </div>
+
+        <!-- Calculated Total Banner -->
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex items-center justify-between">
+          <span class="text-xs text-emerald-800 font-semibold uppercase">Total Sale Value:</span>
+          <span id="milk-calculated-total" class="text-lg font-black text-emerald-700">₹0.00</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Fat % <span class="text-slate-400 font-normal">(Optional)</span></label>
+            <input type="number" inputmode="decimal" step="0.1" min="0" max="15" id="milk-fat" placeholder="e.g. 4.2" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">SNF % <span class="text-slate-400 font-normal">(Optional)</span></label>
+            <input type="number" inputmode="decimal" step="0.1" min="0" max="15" id="milk-snf" placeholder="e.g. 8.5" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Buyer / Customer / Dairy Center</label>
+          <input type="text" id="milk-buyer" placeholder="e.g. Mother Dairy Center / Amul / Local Customers" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Receipt / Milk Slip Photo <span class="text-slate-400 font-normal">(Optional)</span></label>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="openCameraModal('milk')" class="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-camera text-emerald-600 text-sm"></i>
+              <span>Take Photo</span>
+            </button>
+            <label class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-folder-open text-slate-500 text-sm"></i>
+              <span>Upload File</span>
+              <input type="file" id="milk-receipt-file" accept="image/*" onchange="previewSelectedReceipt(event, 'milk-receipt-preview', 'milk-receipt-thumb', 'milk-receipt-filename')" class="hidden">
+            </label>
+            <span id="milk-receipt-filename" class="text-xs text-slate-500 font-medium truncate max-w-[170px]"></span>
+          </div>
+          <div id="milk-receipt-preview" class="hidden mt-2.5 relative inline-block">
+            <img id="milk-receipt-thumb" src="" class="h-20 w-20 object-cover rounded-xl border border-slate-300 shadow-sm">
+            <button type="button" onclick="clearReceiptInput('milk-receipt-file', 'milk-receipt-preview', 'milk-receipt-filename')" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600 shadow"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Notes / Remarks</label>
+          <input type="text" id="milk-notes" placeholder="Optional notes" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+
+        <!-- Sticky Footer Buttons -->
+        <div class="sticky bottom-0 bg-white/95 backdrop-blur-md pt-3 pb-3 sm:pb-1 border-t border-slate-100 flex items-center justify-end gap-2.5 z-20">
+          <button type="button" onclick="closeMilkModal()" class="flex-1 sm:flex-none px-4 py-2.5 border border-slate-300 text-slate-600 rounded-xl sm:rounded-lg text-sm font-semibold hover:bg-slate-100">Cancel</button>
+          <button type="submit" class="flex-2 sm:flex-none px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl sm:rounded-lg text-sm font-bold shadow-md shadow-emerald-900/20">Save Milk Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. ADD COW FEED MODAL -->
+  <div id="feedModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all modal-sheet-enter max-h-[94vh] sm:max-h-[92vh] flex flex-col">
+      <div class="bg-gradient-to-r from-amber-600 to-yellow-600 px-5 sm:px-6 py-3 sm:py-3.5 text-white flex flex-col flex-shrink-0">
+        <div class="w-10 h-1 bg-white/40 rounded-full mx-auto mb-2 sm:hidden"></div>
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-base sm:text-lg flex items-center gap-2">
+            <i class="fa-solid fa-wheat-awn"></i> Add Cow Feed Purchase
+          </h3>
+          <button onclick="closeFeedModal()" class="text-white/80 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <form id="form-feed" onsubmit="submitFeedPurchase(event)" class="p-4 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
+            <input type="date" id="feed-date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Feed Category *</label>
+            <select id="feed-type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+              <option value="Concentrate Feed">Concentrate / Cattle Feed 🌾</option>
+              <option value="Dry Fodder / Hay">Dry Fodder / Hay / Bhusa 🍂</option>
+              <option value="Green Fodder">Green Fodder / Napier 🌱</option>
+              <option value="Silage">Silage / Corn Silage 🌽</option>
+              <option value="Cottonseed Cake">Cottonseed Cake / Khal</option>
+              <option value="Mineral Mixture / Calcium">Mineral Mixture & Calcium 💊</option>
+              <option value="Other Feed">Other Feed</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Feed Item Name / Brand *</label>
+          <input type="text" id="feed-item" required placeholder="e.g. Sudharshan 50kg, Kapila, Wheat Straw" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Quantity (Kg / Bags)</label>
+            <input type="number" inputmode="decimal" step="0.5" min="0" id="feed-quantity" placeholder="e.g. 50" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Total Cost (₹) *</label>
+            <input type="number" inputmode="decimal" step="1" min="1" id="feed-cost" required placeholder="e.g. 1450" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none font-bold text-amber-800">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Supplier / Shop Name</label>
+            <input type="text" id="feed-supplier" placeholder="e.g. Kisan Agro Agency" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Payment Mode</label>
+            <select id="feed-payment" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+              <option value="Cash">Cash</option>
+              <option value="UPI / Online">UPI / Online</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Receipt / Invoice Photo <span class="text-slate-400 font-normal">(Optional)</span></label>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="openCameraModal('feed')" class="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-camera text-amber-600 text-sm"></i>
+              <span>Take Photo</span>
+            </button>
+            <label class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-folder-open text-slate-500 text-sm"></i>
+              <span>Upload File</span>
+              <input type="file" id="feed-receipt-file" accept="image/*" onchange="previewSelectedReceipt(event, 'feed-receipt-preview', 'feed-receipt-thumb', 'feed-receipt-filename')" class="hidden">
+            </label>
+            <span id="feed-receipt-filename" class="text-xs text-slate-500 font-medium truncate max-w-[170px]"></span>
+          </div>
+          <div id="feed-receipt-preview" class="hidden mt-2.5 relative inline-block">
+            <img id="feed-receipt-thumb" src="" class="h-20 w-20 object-cover rounded-xl border border-slate-300 shadow-sm">
+            <button type="button" onclick="clearReceiptInput('feed-receipt-file', 'feed-receipt-preview', 'feed-receipt-filename')" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600 shadow"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Notes</label>
+          <input type="text" id="feed-notes" placeholder="Optional notes" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+
+        <!-- Sticky Footer Buttons -->
+        <div class="sticky bottom-0 bg-white/95 backdrop-blur-md pt-3 pb-3 sm:pb-1 border-t border-slate-100 flex items-center justify-end gap-2.5 z-20">
+          <button type="button" onclick="closeFeedModal()" class="flex-1 sm:flex-none px-4 py-2.5 border border-slate-300 text-slate-600 rounded-xl sm:rounded-lg text-sm font-semibold hover:bg-slate-100">Cancel</button>
+          <button type="submit" class="flex-2 sm:flex-none px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl sm:rounded-lg text-sm font-bold shadow-md shadow-amber-900/20">Save Feed Purchase</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. ADD EXPENSE / CAPITAL INVESTMENT MODAL -->
+  <div id="expenseModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all modal-sheet-enter max-h-[94vh] sm:max-h-[92vh] flex flex-col">
+      <div class="bg-gradient-to-r from-rose-600 to-red-700 px-5 sm:px-6 py-3 sm:py-3.5 text-white flex flex-col flex-shrink-0">
+        <div class="w-10 h-1 bg-white/40 rounded-full mx-auto mb-2 sm:hidden"></div>
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-base sm:text-lg flex items-center gap-2">
+            <i class="fa-solid fa-receipt"></i> Add Farm Expense / Investment
+          </h3>
+          <button onclick="closeExpenseModal()" class="text-white/80 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <form id="form-expense" onsubmit="submitExpense(event)" class="p-4 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
+        <!-- Type Selection: Operational vs Capital Investment -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Expense Nature *</label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="border rounded-xl p-2.5 sm:p-3 flex items-center gap-2.5 sm:gap-3 cursor-pointer hover:bg-slate-50 transition-all border-slate-300 has-[:checked]:border-rose-500 has-[:checked]:bg-rose-50/50">
+              <input type="radio" name="expense_nature" value="Operational" checked onchange="updateCategoryOptions()" class="accent-rose-600">
+              <div>
+                <p class="text-xs font-bold text-slate-800">Operational</p>
+                <p class="text-[10px] sm:text-[11px] text-slate-500">Doctor, labor, power</p>
+              </div>
+            </label>
+            <label class="border rounded-xl p-2.5 sm:p-3 flex items-center gap-2.5 sm:gap-3 cursor-pointer hover:bg-slate-50 transition-all border-slate-300 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/50">
+              <input type="radio" name="expense_nature" value="Capital Investment" onchange="updateCategoryOptions()" class="accent-blue-600">
+              <div>
+                <p class="text-xs font-bold text-slate-800">Capital (Capex)</p>
+                <p class="text-[10px] sm:text-[11px] text-slate-500">Cows, shed, tools</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
+            <input type="date" id="expense-date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Category *</label>
+            <select id="expense-category" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Description / Detail *</label>
+          <input type="text" id="expense-description" required placeholder="e.g. Vaccination medicine for cows / Farm worker salary" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (₹) *</label>
+            <input type="number" inputmode="decimal" step="1" min="1" id="expense-amount" required placeholder="e.g. 2500" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 outline-none font-bold text-rose-800">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Payment Mode</label>
+            <select id="expense-payment" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+              <option value="Cash">Cash</option>
+              <option value="UPI / Online">UPI / Online</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Cheque">Cheque</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Receipt / Bill / UPI Screenshot <span class="text-slate-400 font-normal">(Optional)</span></label>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="openCameraModal('expense')" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-camera text-rose-600 text-sm"></i>
+              <span>Take Photo</span>
+            </button>
+            <label class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all active:scale-95 shadow-sm">
+              <i class="fa-solid fa-folder-open text-slate-500 text-sm"></i>
+              <span>Upload File</span>
+              <input type="file" id="expense-receipt-file" accept="image/*" onchange="previewSelectedReceipt(event, 'expense-receipt-preview', 'expense-receipt-thumb', 'expense-receipt-filename')" class="hidden">
+            </label>
+            <span id="expense-receipt-filename" class="text-xs text-slate-500 font-medium truncate max-w-[170px]"></span>
+          </div>
+          <div id="expense-receipt-preview" class="hidden mt-2.5 relative inline-block">
+            <img id="expense-receipt-thumb" src="" class="h-20 w-20 object-cover rounded-xl border border-slate-300 shadow-sm">
+            <button type="button" onclick="clearReceiptInput('expense-receipt-file', 'expense-receipt-preview', 'expense-receipt-filename')" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600 shadow"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+
+        <!-- Sticky Footer Buttons -->
+        <div class="sticky bottom-0 bg-white/95 backdrop-blur-md pt-3 pb-3 sm:pb-1 border-t border-slate-100 flex items-center justify-end gap-2.5 z-20">
+          <button type="button" onclick="closeExpenseModal()" class="flex-1 sm:flex-none px-4 py-2.5 border border-slate-300 text-slate-600 rounded-xl sm:rounded-lg text-sm font-semibold hover:bg-slate-100">Cancel</button>
+          <button type="submit" class="flex-2 sm:flex-none px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl sm:rounded-lg text-sm font-bold shadow-md shadow-rose-900/20">Save Expense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. FIREBASE CLOUD SETUP MODAL -->
+  <div id="firebaseModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all max-h-[90vh] flex flex-col">
+      <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 px-6 py-4 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <i class="fa-solid fa-cloud text-xl"></i>
+          <div>
+            <h3 class="font-bold text-lg leading-tight">Google Firebase Cloud Sync</h3>
+            <p class="text-xs text-amber-100">Store transactions & receipt photos in Google Cloud for free</p>
+          </div>
+        </div>
+        <button onclick="closeFirebaseModal()" class="text-white/80 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-4 text-sm text-slate-700">
+        <!-- Current Status Banner -->
+        <div id="firebaseStatusBanner" class="p-3.5 rounded-xl border flex items-center justify-between text-xs font-semibold">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- 4-Step Free Setup Guide -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2">
+          <p class="font-bold text-slate-800 text-sm flex items-center gap-1.5 text-amber-700">
+            <i class="fa-brands fa-google"></i> How to Get Your Free Firebase Credentials (1 Minute):
+          </p>
+          <ol class="list-decimal list-inside space-y-1 text-slate-600 leading-relaxed">
+            <li>Go to <a href="https://console.firebase.google.com" target="_blank" class="text-emerald-700 font-bold underline">Firebase Console</a> & click <strong>Add project</strong>.</li>
+            <li>In left menu, click <strong>Build &rarr; Firestore Database &rarr; Create Database</strong> (Select <em>Start in test mode</em>).</li>
+            <li>Click <strong>Build &rarr; Storage &rarr; Get Started</strong> (Select <em>Start in test mode</em> for receipt photos).</li>
+            <li>Click <strong>Project Overview (⚙️) &rarr; Project Settings &rarr; Web App (&lt;/&gt;)</strong>, copy the <code class="bg-slate-200 px-1 py-0.5 rounded">firebaseConfig</code> code snippet, and paste below!</li>
+          </ol>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Paste Firebase Config (JSON or Code Snippet):</label>
+          <textarea id="firebaseConfigInput" rows="7" placeholder='Paste here, e.g.:
+{
+  "apiKey": "AIzaSy...",
+  "authDomain": "dairy.firebaseapp.com",
+  "projectId": "dairy-farm",
+  "storageBucket": "dairy.appspot.com",
+  "appId": "1:..."
+}' class="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-500 outline-none"></textarea>
+          <p class="text-[11px] text-slate-400 mt-1">Credentials are saved locally in your browser to sync directly with your private Google Cloud.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between pt-2 gap-2">
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="disconnectFirebase()" id="btn-disconnect-firebase" class="hidden text-xs text-rose-600 hover:text-rose-700 font-semibold px-3 py-2 border border-rose-200 hover:bg-rose-50 rounded-lg">
+              Disconnect Cloud
+            </button>
+            <button type="button" onclick="syncLocalToFirebase()" id="btn-sync-modal" class="hidden text-xs text-emerald-700 hover:text-emerald-800 font-semibold px-3 py-2 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 rounded-lg flex items-center gap-1.5">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Upload Local Data to Firebase
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="closeFirebaseModal()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-100">Cancel</button>
+            <button type="button" onclick="saveFirebaseConfig()" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-md shadow-amber-900/20 flex items-center gap-2">
+              <i class="fa-solid fa-floppy-disk"></i> Save & Connect Cloud
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. LIVE CAMERA CAPTURE VIEWFINDER MODAL -->
+  <div id="cameraModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[60] flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-900 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-700/60 flex flex-col max-h-[92vh]">
+      <!-- Camera Header -->
+      <div class="px-5 py-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-white flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+          <h3 class="font-bold text-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-camera text-emerald-400"></i> Snap Receipt Photo
+          </h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-flip-camera" onclick="flipCameraFacing()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs flex items-center gap-1 transition-all" title="Flip Camera">
+            <i class="fa-solid fa-camera-rotate text-sm"></i>
+          </button>
+          <button type="button" onclick="closeCameraModal()" class="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm transition-all">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Video Viewfinder & Canvas Preview -->
+      <div class="relative bg-black flex items-center justify-center min-h-[300px] max-h-[55vh] overflow-hidden p-2 flex-1">
+        <video id="cameraVideo" autoplay playsinline class="w-full h-full object-contain rounded-2xl"></video>
+        <canvas id="cameraCanvas" class="hidden w-full h-full object-contain rounded-2xl"></canvas>
+        
+        <!-- Framing overlay -->
+        <div id="cameraGuides" class="absolute inset-5 border-2 border-dashed border-emerald-400/50 rounded-2xl pointer-events-none flex items-center justify-center">
+          <span class="text-[11px] text-white/70 bg-black/60 px-3 py-1 rounded-full backdrop-blur-sm">Align receipt or slip here</span>
+        </div>
+      </div>
+
+      <!-- Camera Action Controls -->
+      <div class="p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-center flex-shrink-0">
+        <!-- Live mode button -->
+        <div id="cameraLiveControls" class="flex items-center justify-between w-full px-4">
+          <button type="button" onclick="closeCameraModal()" class="text-xs text-slate-400 hover:text-white font-semibold">Cancel</button>
+          <button type="button" onclick="captureSnapshot()" class="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 border-4 border-slate-900 ring-4 ring-emerald-500/50 text-white text-2xl flex items-center justify-center shadow-lg transition-all" title="Snap Photo">
+            <i class="fa-solid fa-camera"></i>
+          </button>
+          <div class="w-10"></div>
+        </div>
+
+        <!-- Review mode buttons (after snapping) -->
+        <div id="cameraReviewControls" class="hidden flex items-center justify-center gap-3 w-full">
+          <button type="button" onclick="retakeSnapshot()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+            <i class="fa-solid fa-rotate-left"></i> Retake
+          </button>
+          <button type="button" onclick="confirmSnapshot()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition-all">
+            <i class="fa-solid fa-check"></i> Use This Photo
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECEIPT VIEW LIGHTBOX MODAL -->
+  <div id="receiptModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden" onclick="closeReceiptModal()">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all" onclick="event.stopPropagation()">
+      <div class="bg-slate-900 px-6 py-3.5 text-white flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-receipt text-emerald-400"></i> <span id="receiptModalTitle">Transaction Receipt / Slip</span>
+        </h3>
+        <div class="flex items-center gap-2">
+          <a id="receiptDownloadBtn" href="#" download class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-white transition-all">
+            <i class="fa-solid fa-download"></i> Download
+          </a>
+          <button onclick="closeReceiptModal()" class="text-white/70 hover:text-white text-lg p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+      <div class="p-4 bg-slate-100 flex items-center justify-center min-h-[300px] max-h-[80vh] overflow-auto">
+        <img id="receiptModalImg" src="" alt="Receipt Image" class="max-h-[75vh] w-auto max-w-full rounded-xl shadow-md border border-slate-200 object-contain">
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. MANAGE STAFF & ACCESS CONTROL MODAL -->
+  <div id="accessModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-xl w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all modal-sheet-enter max-h-[94vh] sm:max-h-[92vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="bg-gradient-to-r from-indigo-700 via-indigo-800 to-purple-800 px-5 sm:px-6 py-3.5 text-white flex flex-col flex-shrink-0">
+        <div class="w-10 h-1 bg-white/40 rounded-full mx-auto mb-2 sm:hidden"></div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-sm shadow-inner">
+              <i class="fa-solid fa-user-shield text-indigo-300"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-base sm:text-lg leading-tight">Manage Staff & Access</h3>
+              <p class="text-[11px] text-indigo-200">Control who can log in with Google to record or view data</p>
+            </div>
+          </div>
+          <button onclick="closeAccessModal()" class="text-white/80 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <div class="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1 text-sm">
+        <!-- Add Staff Form -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+          <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-user-plus text-indigo-600"></i> Authorize New Team Member
+          </h4>
+          <form id="form-add-access-user" onsubmit="submitAddAuthorizedUser(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Google Email Address *</label>
+              <input type="email" id="access-user-email" required placeholder="e.g. staff.member@gmail.com" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Staff Member Name</label>
+                <input type="text" id="access-user-name" placeholder="e.g. Suresh Patel" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Role / Permissions *</label>
+                <select id="access-user-role" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="Staff">👤 Staff (Record Milk & Feed only)</option>
+                  <option value="Admin">🛡️ Admin (Full Financial & Delete Access)</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-900/20 flex items-center justify-center gap-2 transition-all active:scale-95">
+              <i class="fa-solid fa-check"></i> Authorize Google Account
+            </button>
+          </form>
+        </div>
+
+        <!-- Authorized Users List -->
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-users text-slate-500"></i> Authorized Staff & Owners
+            </h4>
+            <span id="access-user-count" class="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-0.5 rounded-full">0 Users</span>
+          </div>
+
+          <div id="authorized-users-list" class="space-y-2">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky bottom-0 bg-white pt-3 pb-3 px-5 border-t border-slate-100 flex justify-end">
+        <button type="button" onclick="closeAccessModal()" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. ACCESS DENIED / UNAUTHORIZED OVERLAY -->
+  <div id="unauthorizedModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[70] flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl border border-slate-100 space-y-4">
+      <div class="w-16 h-16 rounded-3xl bg-rose-100 text-rose-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
+        <i class="fa-solid fa-lock"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-black text-slate-900">Access Restricted</h3>
+        <p class="text-xs text-slate-500 mt-1">Your Google account is not yet authorized for GauDhan Dairy.</p>
+      </div>
+      <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-left flex items-center gap-3">
+        <img id="unauth-user-avatar" src="https://ui-avatars.com/api/?name=User" class="w-10 h-10 rounded-full border border-slate-300 object-cover" alt="Avatar">
+        <div class="truncate">
+          <p id="unauth-user-name" class="text-xs font-bold text-slate-800 truncate">User Name</p>
+          <p id="unauth-user-email" class="text-[11px] text-slate-500 truncate">user@gmail.com</p>
+        </div>
+      </div>
+      <p class="text-xs text-slate-600 bg-amber-50 p-3 rounded-xl border border-amber-200 text-amber-900 text-left">
+        <i class="fa-solid fa-circle-info text-amber-600 mr-1"></i>
+        Please ask the GauDhan Dairy Farm Owner to grant your email access in the <strong>"Manage Staff & Access"</strong> panel.
+      </p>
+      <div class="flex items-center gap-2 pt-2">
+        <button onclick="handleGoogleSignOut()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all shadow-md">
+          <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Switch / Sign Out Account
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. USER LOGIN MODAL (Google Auth + Direct Farm Access) -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all modal-sheet-enter max-h-[94vh] sm:max-h-[90vh] flex flex-col">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900 px-6 py-4 text-white flex flex-col flex-shrink-0">
+        <div class="w-10 h-1 bg-white/40 rounded-full mx-auto mb-2 sm:hidden"></div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-lg text-emerald-300">
+              <i class="fa-solid fa-cow"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-base sm:text-lg leading-tight">Sign in to GauDhan Dairy</h3>
+              <p class="text-[11px] text-emerald-200">Owner & Staff Authentication</p>
+            </div>
+          </div>
+          <button onclick="closeLoginModal()" class="text-white/80 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-sm">
+        <!-- Error Banner if Firebase Google Auth has issue -->
+        <div id="loginErrorBanner" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+          <div class="flex items-start gap-2">
+            <i class="fa-solid fa-circle-exclamation text-rose-600 mt-0.5"></i>
+            <div class="flex-1">
+              <p id="loginErrorText" class="font-medium leading-relaxed"></p>
+              <p class="mt-1 text-[11px] text-rose-600 font-semibold">You can also use the Instant Farm Login below to sign in directly!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. Google One-Tap Sign In -->
+        <div class="space-y-2">
+          <button type="button" id="btn-modal-google-signin" onclick="handleGoogleSignIn()" class="w-full py-3 px-4 bg-white hover:bg-slate-50 active:scale-98 text-slate-800 border-2 border-slate-200 hover:border-slate-300 rounded-2xl font-bold text-sm shadow-sm flex items-center justify-center gap-3 transition-all">
+            <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span>Continue with Google Account</span>
+          </button>
+          <p class="text-[11px] text-center text-slate-400">Authenticates with your Google profile via Firebase Cloud</p>
+        </div>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-200"></div>
+          <span class="flex-shrink mx-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Or Quick Farm Sign-In</span>
+          <div class="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <!-- 2. Direct Instant Farm Login -->
+        <form id="form-quick-login" onsubmit="submitQuickLogin(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Your Email Address *</label>
+            <input type="email" id="quick-login-email" required placeholder="e.g. farm.owner@gmail.com" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Your Name</label>
+            <input type="text" id="quick-login-name" placeholder="e.g. Kalash" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+
+          <!-- Quick Fill Buttons -->
+          <div class="flex items-center gap-2 pt-1">
+            <button type="button" onclick="setQuickLoginRole('Owner')" class="flex-1 py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold text-center transition-all">
+              👑 Quick Owner
+            </button>
+            <button type="button" onclick="setQuickLoginRole('Staff')" class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold text-center transition-all">
+              👤 Quick Staff
+            </button>
+          </div>
+
+          <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950/20 flex items-center justify-center gap-2 transition-all active:scale-95">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In to GauDhan Dairy
+          </button>
+        </form>
+      </div>
+
+      <div class="sticky bottom-0 bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-end">
+        <button type="button" onclick="closeLoginModal()" class="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification element -->
+  <div id="toast" class="fixed bottom-20 md:bottom-6 right-4 sm:right-6 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-3 transform translate-y-28 opacity-0 transition-all duration-300">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-message" class="text-sm font-medium">Operation completed</span>
+  </div>
+
+  <!-- MOBILE BOTTOM THUMB NAVIGATION DOCK (Easy 1-Hand Handling) -->
+  <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 py-1.5 px-3 flex items-center justify-around md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.08)] pb-safe">
+    <button type="button" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center justify-center text-slate-600 hover:text-emerald-700 text-xs font-semibold py-1 active:scale-95 transition-all">
+      <i class="fa-solid fa-chart-pie text-base text-slate-500"></i>
+      <span class="text-[10px] mt-0.5">Overview</span>
+    </button>
+    <button type="button" onclick="openMilkModal()" class="flex flex-col items-center justify-center text-emerald-800 hover:text-emerald-900 text-xs font-bold py-1 active:scale-95 transition-all">
+      <div class="w-11 h-11 -mt-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-900/30 border-2 border-white">
+        <i class="fa-solid fa-plus text-base"></i>
+      </div>
+      <span class="text-[10px] mt-0.5 text-emerald-800 font-extrabold">+ Milk</span>
+    </button>
+    <button type="button" onclick="openFeedModal()" class="flex flex-col items-center justify-center text-amber-700 hover:text-amber-800 text-xs font-semibold py-1 active:scale-95 transition-all">
+      <i class="fa-solid fa-wheat-awn text-base text-amber-600"></i>
+      <span class="text-[10px] mt-0.5">+ Feed</span>
+    </button>
+    <button type="button" onclick="openExpenseModal()" class="flex flex-col items-center justify-center text-rose-700 hover:text-rose-800 text-xs font-semibold py-1 active:scale-95 transition-all">
+      <i class="fa-solid fa-receipt text-base text-rose-600"></i>
+      <span class="text-[10px] mt-0.5">+ Expense</span>
+    </button>
+    <button type="button" onclick="toggleMoreMenu()" class="flex flex-col items-center justify-center text-slate-600 hover:text-slate-900 text-xs font-semibold py-1 active:scale-95 transition-all">
+      <i class="fa-solid fa-bars text-base text-slate-500"></i>
+      <span class="text-[10px] mt-0.5">More</span>
+    </button>
+  </nav>
+
+  <!-- Scripts -->
+  <script src="firebaseSync.js?v=9"></script>
+  <script src="app.js?v=9"></script>
+</body>
+</html>
