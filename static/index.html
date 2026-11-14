@@ -343,20 +343,11 @@
           </div>
         </div>
 
-        <!-- Period Toggle Switcher -->
-        <div class="flex items-center gap-1 p-1 bg-slate-200/70 rounded-xl self-start sm:self-auto overflow-x-auto max-w-full">
-          <button id="btn-partner-daily" onclick="setPartnerProfitPeriod('daily')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-900">
-            <i class="fa-regular fa-calendar-day mr-1"></i> Daily (Today)
-          </button>
-          <button id="btn-partner-monthly" onclick="setPartnerProfitPeriod('monthly')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-white text-emerald-700 shadow-sm">
-            <i class="fa-regular fa-calendar-days mr-1"></i> Monthly (This Month)
-          </button>
-          <button id="btn-partner-yearly" onclick="setPartnerProfitPeriod('yearly')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-900">
-            <i class="fa-regular fa-calendar mr-1"></i> Yearly (This Year)
-          </button>
-          <button id="btn-partner-current" onclick="setPartnerProfitPeriod('current')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-900">
-            <i class="fa-solid fa-filter mr-1"></i> Current View
-          </button>
+        <div class="flex items-center gap-2">
+          <div id="partner-active-period-badge" class="px-3 py-1.5 rounded-xl bg-white border border-emerald-200 shadow-xs flex items-center gap-2 text-xs font-semibold text-emerald-800">
+            <i class="fa-solid fa-calendar-check text-emerald-600"></i>
+            <span id="partner-active-period-text">Filter: Monthly</span>
+          </div>
         </div>
       </div>
 
@@ -364,7 +355,7 @@
       <div class="my-4 p-3 sm:p-4 rounded-xl bg-white border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
         <div class="flex items-center gap-2.5">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span class="text-xs sm:text-sm font-semibold text-slate-700" id="partner-period-active-title">Monthly Net Profit (This Month)</span>
+          <span class="text-xs sm:text-sm font-semibold text-slate-700" id="partner-period-active-title">Net Profit (Selected Period)</span>
         </div>
         <div class="flex items-baseline gap-2">
           <span class="text-xs text-slate-500 font-medium">Net Profit Pool:</span>
@@ -1443,7 +1434,7 @@
   </nav>
 
   <!-- Scripts -->
-  <script src="firebaseSync.js?v=16"></script>
-  <script src="app.js?v=16"></script>
+  <script src="firebaseSync.js?v=17"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>
