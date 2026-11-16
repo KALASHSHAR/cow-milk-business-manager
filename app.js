@@ -621,6 +621,77 @@ async function loadRecentTables() {
   loadExpensesTable();
 }
 
+// ----------------- 24-HOUR DELETION PERMISSION HELPERS ----------------- //
+
+function getRecordTimestamp(record) {
+  if (!record) return null;
+  if (record.created_at) {
+    if (typeof record.created_at.toMillis === 'function') {
+      return record.created_at.toMillis();
+    }
+    if (record.created_at.seconds) {
+      return record.created_at.seconds * 1000;
+    }
+    const parsed = new Date(record.created_at).getTime();
+    if (!isNaN(parsed)) return parsed;
+  }
+  if (record.date) {
+    const dStr = record.date.length === 10 ? record.date + 'T12:00:00' : record.date;
+    const parsed = new Date(dStr).getTime();
+    if (!isNaN(parsed)) return parsed;
+  }
+  return null;
+}
+
+function isTransactionDeletable(record) {
+  // Primary Owner can delete any transaction anytime
+  if (typeof firebaseManager !== 'undefined' && firebaseManager.isOwner()) {
+    return { deletable: true, isOwner: true };
+  }
+  const ts = getRecordTimestamp(record);
+  if (!ts) {
+    return { deletable: false, reason: 'Record age unknown. Only Owner can delete.' };
+  }
+  const ageHours = (Date.now() - ts) / (1000 * 60 * 60);
+  if (ageHours <= 24) {
+    const remaining = Math.max(0, 24 - ageHours).toFixed(1);
+    return { deletable: true, remainingHours: remaining, isOwner: false };
+  } else {
+    const past = Math.floor(ageHours);
+    return {
+      deletable: false,
+      pastHours: past,
+      reason: `Locked: Created ${past}h ago. Only the Owner (kalashshar1234@gmail.com) can delete transactions older than 24 hours.`
+    };
+  }
+}
+
+function alertTransactionLocked(reason) {
+  const msg = reason || 'Locked: Transactions older than 24 hours can only be deleted by the Owner (Kalash Sharma).';
+  showToast(msg, 'warning');
+}
+
+function renderDeleteActionButton(record, deleteFnName, isMobile = false) {
+  const perm = isTransactionDeletable(record);
+  if (perm.deletable) {
+    const titleText = perm.isOwner ? 'Delete Entry (Owner Access)' : `Delete Entry (${perm.remainingHours}h remaining to delete)`;
+    const classes = isMobile
+      ? 'text-slate-400 hover:text-rose-600 p-1.5 active:scale-95 transition-colors'
+      : 'text-slate-400 hover:text-rose-600 p-1.5 transition-colors';
+    return `<button onclick="${deleteFnName}('${record.id}')" class="${classes}" title="${titleText}">
+      <i class="fa-regular fa-trash-can"></i>
+    </button>`;
+  } else {
+    const safeReason = (perm.reason || 'Locked: Only Owner can delete after 24h').replace(/'/g, "\\'");
+    const classes = isMobile
+      ? 'text-slate-300 hover:text-amber-500 p-1.5 active:scale-95 transition-colors cursor-not-allowed'
+      : 'text-slate-300 hover:text-amber-500 p-1.5 transition-colors cursor-not-allowed';
+    return `<button onclick="alertTransactionLocked('${safeReason}')" class="${classes}" title="Locked: Past 24 hours (Owner only)">
+      <i class="fa-solid fa-lock text-xs"></i>
+    </button>`;
+  }
+}
+
 async function loadMilkTable() {
   try {
     let records = [];
@@ -670,9 +741,7 @@ async function loadMilkTable() {
           </td>
           <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(r.notes || '')}</td>
           <td class="py-3 px-4 text-right">
-            <button onclick="deleteMilkSale('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
-              <i class="fa-regular fa-trash-can"></i>
-            </button>
+            ${renderDeleteActionButton(r, 'deleteMilkSale', false)}
           </td>
         </tr>
       `}).join('');
@@ -718,9 +787,7 @@ async function loadMilkTable() {
                     <i class="fa-solid fa-receipt text-emerald-600"></i> Slip
                   </button>
                 ` : ''}
-                <button onclick="deleteMilkSale('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 active:scale-95 transition-colors" title="Delete">
-                  <i class="fa-regular fa-trash-can"></i>
-                </button>
+                ${renderDeleteActionButton(r, 'deleteMilkSale', true)}
               </div>
             </div>
           </div>
@@ -780,9 +847,7 @@ async function loadFeedTable() {
           </td>
           <td class="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">${escapeHtml(r.notes || '')}</td>
           <td class="py-3 px-4 text-right">
-            <button onclick="deleteFeedPurchase('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
-              <i class="fa-regular fa-trash-can"></i>
-            </button>
+            ${renderDeleteActionButton(r, 'deleteFeedPurchase', false)}
           </td>
         </tr>
       `}).join('');
@@ -824,9 +889,7 @@ async function loadFeedTable() {
                     <i class="fa-solid fa-receipt text-amber-600"></i> Bill
                   </button>
                 ` : ''}
-                <button onclick="deleteFeedPurchase('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 active:scale-95 transition-colors" title="Delete">
-                  <i class="fa-regular fa-trash-can"></i>
-                </button>
+                ${renderDeleteActionButton(r, 'deleteFeedPurchase', true)}
               </div>
             </div>
           </div>
@@ -885,9 +948,7 @@ async function loadExpensesTable() {
             ` : `<span class="text-xs text-slate-300">--</span>`}
           </td>
           <td class="py-3 px-4 text-right">
-            <button onclick="deleteExpense('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors" title="Delete Entry">
-              <i class="fa-regular fa-trash-can"></i>
-            </button>
+            ${renderDeleteActionButton(r, 'deleteExpense', false)}
           </td>
         </tr>
       `}).join('');
@@ -928,9 +989,7 @@ async function loadExpensesTable() {
                   <i class="fa-solid fa-receipt text-slate-600"></i> Receipt
                 </button>
               ` : ''}
-              <button onclick="deleteExpense('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 active:scale-95 transition-colors" title="Delete">
-                <i class="fa-regular fa-trash-can"></i>
-              </button>
+              ${renderDeleteActionButton(r, 'deleteExpense', true)}
             </div>
           </div>
         `;
@@ -1440,13 +1499,21 @@ async function deleteMilkSale(id) {
     if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
       await firebaseManager.deleteMilk(id);
     } else {
-      await fetch(`/api/milk/${id}`, { method: 'DELETE' });
+      const userEmail = (typeof firebaseManager !== 'undefined' && firebaseManager.currentUser && firebaseManager.currentUser.email) ? firebaseManager.currentUser.email : '';
+      const res = await fetch(`/api/milk/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-User-Email': userEmail }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete milk record');
+      }
     }
-    showToast('Milk record removed', 'success');
+    showToast('Milk record removed successfully', 'success');
     loadDashboard();
     loadMilkTable();
   } catch (err) {
-    showToast('Failed to delete', 'error');
+    showToast(err.message || 'Failed to delete record', 'error');
   }
 }
 
@@ -1456,14 +1523,22 @@ async function deleteFeedPurchase(id) {
     if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
       await firebaseManager.deleteFeed(id);
     } else {
-      await fetch(`/api/feed/${id}`, { method: 'DELETE' });
+      const userEmail = (typeof firebaseManager !== 'undefined' && firebaseManager.currentUser && firebaseManager.currentUser.email) ? firebaseManager.currentUser.email : '';
+      const res = await fetch(`/api/feed/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-User-Email': userEmail }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete feed record');
+      }
     }
-    showToast('Feed record removed', 'success');
+    showToast('Feed record removed successfully', 'success');
     loadDashboard();
     loadFeedTable();
     loadExpensesTable();
   } catch (err) {
-    showToast('Failed to delete', 'error');
+    showToast(err.message || 'Failed to delete record', 'error');
   }
 }
 
@@ -1473,13 +1548,21 @@ async function deleteExpense(id) {
     if (typeof firebaseManager !== 'undefined' && firebaseManager.connected) {
       await firebaseManager.deleteExpense(id);
     } else {
-      await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+      const userEmail = (typeof firebaseManager !== 'undefined' && firebaseManager.currentUser && firebaseManager.currentUser.email) ? firebaseManager.currentUser.email : '';
+      const res = await fetch(`/api/expenses/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-User-Email': userEmail }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete expense record');
+      }
     }
-    showToast('Expense removed', 'success');
+    showToast('Expense removed successfully', 'success');
     loadDashboard();
     loadExpensesTable();
   } catch (err) {
-    showToast('Failed to delete', 'error');
+    showToast(err.message || 'Failed to delete record', 'error');
   }
 }
 

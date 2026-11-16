@@ -501,8 +501,12 @@
             <i class="fa-solid fa-receipt"></i> Expenses & Capex
           </button>
         </div>
-        <div class="pb-2 w-full sm:w-auto">
-          <input type="text" id="tableSearch" onkeyup="filterCurrentTable()" placeholder="Quick search transactions..." class="w-full sm:w-60 text-xs px-3 py-1.5 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
+        <div class="flex items-center gap-2 pb-2 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-2xs" title="Transactions can be deleted by Founders within 24 hours of creation. After 24 hours, only the Owner can delete.">
+            <i class="fa-solid fa-clock-rotate-left text-amber-500"></i>
+            <span class="hidden md:inline">24h Policy:</span> After 24h Owner Only
+          </span>
+          <input type="text" id="tableSearch" onkeyup="filterCurrentTable()" placeholder="Quick search transactions..." class="w-full sm:w-56 text-xs px-3 py-1.5 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
         </div>
       </div>
 
@@ -1484,7 +1488,7 @@
   </nav>
 
   <!-- Scripts -->
-  <script src="firebaseSync.js?v=21"></script>
-  <script src="app.js?v=21"></script>
+  <script src="firebaseSync.js?v=23"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>

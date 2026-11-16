@@ -5,6 +5,45 @@ from datetime import datetime, timedelta
 import random
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dairy_farm.db")
+PRIMARY_OWNER_EMAIL = 'kalashshar1234@gmail.com'
+
+def check_transaction_24h_allowed(table_name, record_id, user_email=None):
+    """
+    Transactions within 24 hours can be deleted by any authorized user.
+    After 24 hours, only the primary farm owner can delete the transaction.
+    """
+    if user_email and user_email.lower().strip() == PRIMARY_OWNER_EMAIL.lower():
+        return True
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT date, created_at FROM {table_name} WHERE id = ?", (record_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return True
+    
+    created_val = row['created_at'] or row['date']
+    if not created_val:
+        return False
+    
+    try:
+        if len(str(created_val)) == 10:
+            rec_time = datetime.strptime(str(created_val), '%Y-%m-%d')
+        elif 'T' in str(created_val):
+            rec_time = datetime.fromisoformat(str(created_val).replace('Z', '+00:00'))
+            if rec_time.tzinfo:
+                rec_time = rec_time.astimezone().replace(tzinfo=None)
+        else:
+            rec_time = datetime.strptime(str(created_val)[:19], '%Y-%m-%d %H:%M:%S')
+        
+        # SQLite CURRENT_TIMESTAMP is UTC
+        age = datetime.utcnow() - rec_time
+        if age.total_seconds() > 24 * 3600:
+            return False
+    except Exception:
+        return False
+    return True
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -151,7 +190,9 @@ def get_milk_sales(limit=100, start_date=None, end_date=None):
     conn.close()
     return rows
 
-def delete_milk_sale(sale_id):
+def delete_milk_sale(sale_id, user_email=None):
+    if not check_transaction_24h_allowed('milk_sales', sale_id, user_email):
+        raise PermissionError("Permission Denied: Transactions older than 24 hours can only be deleted by the Owner (kalashshar1234@gmail.com).")
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM milk_sales WHERE id = ?", (sale_id,))
@@ -213,7 +254,9 @@ def get_feed_purchases(limit=100, start_date=None, end_date=None):
     conn.close()
     return rows
 
-def delete_feed_purchase(feed_id):
+def delete_feed_purchase(feed_id, user_email=None):
+    if not check_transaction_24h_allowed('feed_purchases', feed_id, user_email):
+        raise PermissionError("Permission Denied: Transactions older than 24 hours can only be deleted by the Owner (kalashshar1234@gmail.com).")
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM expenses WHERE feed_purchase_id = ?", (feed_id,))
@@ -265,7 +308,9 @@ def get_expenses(limit=100, start_date=None, end_date=None, exp_type=None):
     conn.close()
     return rows
 
-def delete_expense(exp_id):
+def delete_expense(exp_id, user_email=None):
+    if not check_transaction_24h_allowed('expenses', exp_id, user_email):
+        raise PermissionError("Permission Denied: Transactions older than 24 hours can only be deleted by the Owner (kalashshar1234@gmail.com).")
     conn = get_db()
     cursor = conn.cursor()
     # Check if tied to feed purchase

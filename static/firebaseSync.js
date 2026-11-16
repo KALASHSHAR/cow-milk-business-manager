@@ -455,6 +455,17 @@ const firebaseManager = {
       if (cloudStatusBtn) cloudStatusBtn.style.display = 'none';
       if (btnEditInvestments) btnEditInvestments.style.display = this.isOwner() ? 'inline-flex' : 'none';
     }
+
+    // Refresh transaction tables so delete/lock buttons dynamically update
+    if (typeof loadMilkTable === 'function') {
+      try {
+        loadMilkTable();
+        loadFeedTable();
+        loadExpensesTable();
+      } catch (e) {
+        // Table may not be initialized yet
+      }
+    }
   },
 
   disconnect() {
@@ -755,8 +766,41 @@ const firebaseManager = {
     }));
   },
 
+  checkDeletablePermission(data) {
+    // Primary Owner can delete any transaction at any time
+    if (this.isOwner()) return true;
+
+    // For other users, only allowed within 24 hours of creation
+    let ts = null;
+    if (data) {
+      if (data.created_at) {
+        if (typeof data.created_at.toMillis === 'function') {
+          ts = data.created_at.toMillis();
+        } else if (data.created_at.seconds) {
+          ts = data.created_at.seconds * 1000;
+        } else {
+          const parsed = new Date(data.created_at).getTime();
+          if (!isNaN(parsed)) ts = parsed;
+        }
+      }
+      if (!ts && data.date) {
+        const parsed = new Date(data.date.length === 10 ? data.date + 'T12:00:00' : data.date).getTime();
+        if (!isNaN(parsed)) ts = parsed;
+      }
+    }
+
+    if (!ts) return false;
+    const ageHours = (Date.now() - ts) / (1000 * 60 * 60);
+    return ageHours <= 24;
+  },
+
   async deleteMilk(docId) {
-    await this.db.collection('milk_sales').doc(docId).delete();
+    const docRef = this.db.collection('milk_sales').doc(docId);
+    const snap = await docRef.get();
+    if (snap.exists && !this.checkDeletablePermission(snap.data())) {
+      throw new Error('Permission Denied: Transactions older than 24 hours can only be deleted by the Owner (kalashshar1234@gmail.com).');
+    }
+    await docRef.delete();
     return true;
   },
 
@@ -823,6 +867,12 @@ const firebaseManager = {
   },
 
   async deleteFeed(docId) {
+    const docRef = this.db.collection('feed_purchases').doc(docId);
+    const snap = await docRef.get();
+    if (snap.exists && !this.checkDeletablePermission(snap.data())) {
+      throw new Error('Permission Denied: Transactions older than 24 hours can only be deleted by the Owner (kalashshar1234@gmail.com).');
+    }
+
     // Delete linked expense
     const expSnapshot = await this.db.collection('expenses')
       .where('feed_purchase_id', '==', docId)
@@ -830,7 +880,7 @@ const firebaseManager = {
     
     const batch = this.db.batch();
     expSnapshot.docs.forEach(d => batch.delete(d.ref));
-    batch.delete(this.db.collection('feed_purchases').doc(docId));
+    batch.delete(docRef);
     await batch.commit();
     return true;
   },
@@ -876,8 +926,13 @@ const firebaseManager = {
   async deleteExpense(docId) {
     const docRef = this.db.collection('expenses').doc(docId);
     const doc = await docRef.get();
-    if (doc.exists && doc.data().feed_purchase_id) {
-      await this.db.collection('feed_purchases').doc(doc.data().feed_purchase_id).delete();
+    if (doc.exists) {
+      if (!this.checkDeletablePermission(doc.data())) {
+        throw new Error('Permission Denied: Transactions older than 24 hours can only be deleted by the Owner (kalashshar1234@gmail.com).');
+      }
+      if (doc.data().feed_purchase_id) {
+        await this.db.collection('feed_purchases').doc(doc.data().feed_purchase_id).delete();
+      }
     }
     await docRef.delete();
     return true;

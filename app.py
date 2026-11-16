@@ -88,8 +88,14 @@ def add_milk_sale():
 
 @app.route('/api/milk/<int:sale_id>', methods=['DELETE'])
 def delete_milk_sale(sale_id):
-    db.delete_milk_sale(sale_id)
-    return jsonify({'success': True, 'message': 'Milk sale deleted'})
+    user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+    try:
+        db.delete_milk_sale(sale_id, user_email)
+        return jsonify({'success': True, 'message': 'Milk sale deleted'})
+    except PermissionError as pe:
+        return jsonify({'success': False, 'error': str(pe)}), 403
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 # ----------------- FEED PURCHASES API ----------------- #
 
@@ -116,8 +122,14 @@ def add_feed_purchase():
 
 @app.route('/api/feed/<int:feed_id>', methods=['DELETE'])
 def delete_feed_purchase(feed_id):
-    db.delete_feed_purchase(feed_id)
-    return jsonify({'success': True, 'message': 'Feed purchase deleted'})
+    user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+    try:
+        db.delete_feed_purchase(feed_id, user_email)
+        return jsonify({'success': True, 'message': 'Feed purchase deleted'})
+    except PermissionError as pe:
+        return jsonify({'success': False, 'error': str(pe)}), 403
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 # ----------------- EXPENSES API ----------------- #
 
@@ -145,8 +157,14 @@ def add_expense():
 
 @app.route('/api/expenses/<int:exp_id>', methods=['DELETE'])
 def delete_expense(exp_id):
-    db.delete_expense(exp_id)
-    return jsonify({'success': True, 'message': 'Expense deleted'})
+    user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+    try:
+        db.delete_expense(exp_id, user_email)
+        return jsonify({'success': True, 'message': 'Expense deleted'})
+    except PermissionError as pe:
+        return jsonify({'success': False, 'error': str(pe)}), 403
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 # ----------------- DATA SEED & RESET ----------------- #
 
